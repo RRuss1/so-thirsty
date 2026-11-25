@@ -121,7 +121,7 @@ local moving = {}                -- holders with a pulse or nudge running
 local ticker
 local clock = 0
 
-local function tick()
+local function step()
   clock = clock + STEP
   local any = false
   for holder in pairs(moving) do
@@ -163,7 +163,7 @@ end
 
 local function move(holder)
   moving[holder] = true
-  if not ticker then ticker = C_Timer.NewTicker(STEP, tick) end
+  if not ticker then ticker = C_Timer.NewTicker(STEP, step) end
 end
 
 -- Adds the layers to a holder. Also used for the Options preview frame.
