@@ -330,8 +330,9 @@ local function tabList()
         function(v) buttonCfg().thirstyMsg = v end },
       { "edit", L.OPT_LINE_READY, function() return buttonCfg().readyMsg end,
         function(v) buttonCfg().readyMsg = v end },
-      { "note", function() return L.OPT_LINE_PREVIEW:format(ns.Button.Line("thirsty")) end, 40 },
-      { "buttons", { L.OPT_UNLOCK, toggleUnlock, 170 } },
+      { "note", function() return L.OPT_LINE_PREVIEW:format(ns.Button.Line("thirsty")) end, 30 },
+      { "buttons", { L.OPT_UNLOCK, toggleUnlock, 170 }, { L.OPT_MACRO, function() ns.Button.MakeMacros() end, 170 } },
+      { "note", L.OPT_MACRO_NOTE, 40 },
     } },
     { L.TAB_GENERAL, {
       { "head", L.OPT_GENERAL },

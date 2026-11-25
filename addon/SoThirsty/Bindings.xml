@@ -1,0 +1,8 @@
+<Bindings>
+  <Binding name="SOTHIRSTY_DRINK" header="SOTHIRSTY" category="ADDONS">
+    SlashCmdList.SOTHIRSTY("drink")
+  </Binding>
+  <Binding name="SOTHIRSTY_READY" category="ADDONS">
+    SlashCmdList.SOTHIRSTY("ready")
+  </Binding>
+</Bindings>

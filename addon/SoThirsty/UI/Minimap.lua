@@ -44,6 +44,7 @@ function ns.OpenMainMenu(owner)
     root:CreateButton(entry(L.M_OPTIONS, ""), run("options"))
     root:CreateButton(entry(L.M_DRINK, "drink"), run("drink"))
     root:CreateButton(entry(L.M_READY, "ready"), run("ready"))
+    root:CreateButton(entry(L.M_MACRO, "macro"), run("macro"))
 
     root:CreateDivider()
     root:CreateCheckbox(entry(L.M_ENABLED, "on | off"), function() return s.enabled end,

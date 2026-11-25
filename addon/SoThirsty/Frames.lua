@@ -11,7 +11,7 @@ local Frames = {}
 ns.Frames = Frames
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
-local GLOW = 10      -- px of soft glow outside the frame
+local GLOW = 10      -- px of soft glow just inside the frame's edge
 local CORNER = 9     -- px length of a corner bracket
 
 local holders = {}   -- guid -> holder
@@ -48,36 +48,39 @@ local function edgeInto(parent, list, thick, out)
   right:SetPoint("BOTTOMRIGHT", out, thick - out)
 end
 
--- { file, point on the piece, point on the parent, texcoords, sized by }
-local GLOW_PIECES = {
-  { "glow-corner", "BOTTOMRIGHT", "TOPLEFT", { 1, 0, 1, 0 } },
-  { "glow-corner", "BOTTOMLEFT", "TOPRIGHT", { 0, 1, 1, 0 } },
-  { "glow-corner", "TOPRIGHT", "BOTTOMLEFT", { 1, 0, 0, 1 } },
-  { "glow-corner", "TOPLEFT", "BOTTOMRIGHT", { 0, 1, 0, 1 } },
+-- The glow art (Media/glow-*.tga) is drawn to grow INWARD from an edge: the corner piece is
+-- an L, bright along its two outer sides. So the glow sits just inside the unit frame, the
+-- same way it does on SoThirsty's windows. (Flipping it outward makes the L's arms stick
+-- out past the corners and cross.)
+-- Corners: { point, texcoords }. Edges: { file, point 1, x, y, point 2, x, y, texcoords }.
+local G = GLOW
+local GLOW_CORNERS = {
+  { "TOPLEFT", { 0, 1, 0, 1 } }, { "TOPRIGHT", { 1, 0, 0, 1 } },
+  { "BOTTOMLEFT", { 0, 1, 1, 0 } }, { "BOTTOMRIGHT", { 1, 0, 1, 0 } },
 }
 local GLOW_EDGES = {
-  { "glow-edge-v", "TOPRIGHT", "TOPLEFT", "BOTTOMRIGHT", "BOTTOMLEFT", { 1, 0, 0, 1 } },
-  { "glow-edge-v", "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT", { 0, 1, 0, 1 } },
-  { "glow-edge-h", "BOTTOMLEFT", "TOPLEFT", "BOTTOMRIGHT", "TOPRIGHT", { 0, 1, 1, 0 } },
-  { "glow-edge-h", "TOPLEFT", "BOTTOMLEFT", "TOPRIGHT", "BOTTOMRIGHT", { 0, 1, 0, 1 } },
+  { "glow-edge-v", "TOPLEFT", 0, -G, "BOTTOMLEFT", 0, G, { 0, 1, 0, 1 } },
+  { "glow-edge-v", "TOPRIGHT", 0, -G, "BOTTOMRIGHT", 0, G, { 1, 0, 0, 1 } },
+  { "glow-edge-h", "TOPLEFT", G, 0, "TOPRIGHT", -G, 0, { 0, 1, 0, 1 } },
+  { "glow-edge-h", "BOTTOMLEFT", G, 0, "BOTTOMRIGHT", -G, 0, { 0, 1, 1, 0 } },
 }
 
 local STYLE = {
   border = function(parent, list, look) edgeInto(parent, list, look.thickness, 0) end,
   glow = function(parent, list)
-    for _, g in ipairs(GLOW_PIECES) do
-      local t = piece(parent, list, Theme.MEDIA .. g[1])
-      t:SetSize(GLOW, GLOW)
-      t:SetPoint(g[2], parent, g[3])
-      t:SetTexCoord(unpack(g[4]))
+    for _, g in ipairs(GLOW_CORNERS) do
+      local t = piece(parent, list, Theme.MEDIA .. "glow-corner")
+      t:SetSize(G, G)
+      t:SetPoint(g[1])
+      t:SetTexCoord(unpack(g[2]))
       t:SetBlendMode("ADD")
     end
     for _, g in ipairs(GLOW_EDGES) do
       local t = piece(parent, list, Theme.MEDIA .. g[1])
-      t:SetSize(GLOW, GLOW)
-      t:SetPoint(g[2], parent, g[3])
-      t:SetPoint(g[4], parent, g[5])
-      t:SetTexCoord(unpack(g[6]))
+      t:SetSize(G, G)
+      t:SetPoint(g[2], g[3], g[4])
+      t:SetPoint(g[5], g[6], g[7])
+      t:SetTexCoord(unpack(g[8]))
       t:SetBlendMode("ADD")
     end
     edgeInto(parent, list, 1, 0) -- a fine line so the color reads on bright frames
@@ -134,7 +137,7 @@ function Frames.Build(holder)
   local pulse = CreateFrame("Frame", nil, body)
   pulse:SetAllPoints()
   pulse.pieces = {}
-  edgeInto(pulse, pulse.pieces, 2, 2)
+  edgeInto(pulse, pulse.pieces, 2, 0)
   pulse.anim = pulse:CreateAnimationGroup()
   pulse.anim:SetLooping("BOUNCE")
   pulse.fade = pulse.anim:CreateAnimation("Alpha")

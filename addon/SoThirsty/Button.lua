@@ -104,18 +104,21 @@ local function build()
       f.cooldown:SetCooldown(GetTime(), Levels.COOLDOWN)
     end
   end)
-  f:SetScript("OnDragStart", function(self) if ns.unlocked then self:StartMoving() end end)
+  -- Always draggable; a drag is not a click, so nothing is posted.
+  f:SetScript("OnDragStart", function(self) self:StartMoving() end)
   f:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local point, _, rel, x, y = self:GetPoint(1)
-    ns.Settings().button.point = { point, rel, x, y }
+    local saved = { point, rel, x, y }
+    ns.Settings().button.point = saved
+    self.placed = saved
   end)
   f:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(L.BTN_TITLE)
     GameTooltip:AddLine(L.BTN_TIP_LEFT, 1, 1, 1)
     GameTooltip:AddLine(L.BTN_TIP_RIGHT, 1, 1, 1)
-    GameTooltip:AddLine(ns.unlocked and L.BTN_TIP_UNLOCKED or L.BTN_TIP_LOCKED, 0.68, 0.62, 0.7)
+    GameTooltip:AddLine(L.BTN_TIP_DRAG, 0.68, 0.62, 0.7)
     GameTooltip:Show()
   end)
   f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -158,13 +161,39 @@ function Button.Refresh()
     frame = build()
   end
   if show then
-    local p = s.button.point
-    frame:ClearAllPoints()
-    if p then frame:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else frame:SetPoint("CENTER", 0, -160) end
+    local p = s.button.point or false
+    if frame.placed ~= p then
+      frame.placed = p
+      frame:ClearAllPoints()
+      if p then frame:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else frame:SetPoint("CENTER", 0, -160) end
+    end
     frame.icon:SetTexture(ns.Theme.ICONS[s.look.icon] or ns.Theme.ICONS.drop)
     local busy = ns.Combat.Is()
     frame.icon:SetDesaturated(busy)
     frame:SetAlpha(busy and 0.4 or 1)
   end
   frame:SetShown(show)
+end
+
+-- ---------------------------------------------------------------- macros (/sot macro)
+
+-- Two ordinary macros that run the same slash commands, so the lines can go on an action
+-- bar slot and get a key from there. Created out of combat, only if they don't exist yet.
+local MACROS = {
+  { "SoT Drink", "INV_Drink_07", "/sot drink" },
+  { "SoT Ready", "INV_Drink_18", "/sot ready" },
+}
+
+function Button.MakeMacros()
+  if InCombatLockdown() then return ns.Print(L.MACRO_COMBAT) end
+  if not (CreateMacro and GetMacroIndexByName) then return ns.Print(L.MACRO_UNAVAILABLE) end
+  for _, m in ipairs(MACROS) do
+    local index = GetMacroIndexByName(m[1])
+    if not index or index == 0 then
+      if not pcall(CreateMacro, m[1], m[2], m[3], false) then return ns.Print(L.MACRO_FULL) end
+    end
+  end
+  -- Put the drink macro on the cursor, ready to drop on an action bar.
+  if PickupMacro then pcall(PickupMacro, MACROS[1][1]) end
+  ns.Print(L.MACRO_DONE)
 end

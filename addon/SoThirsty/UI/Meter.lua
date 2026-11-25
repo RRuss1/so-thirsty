@@ -76,11 +76,15 @@ local function build()
   f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   f.title:SetPoint("TOPLEFT", PAD + 2, -PAD)
   f.title:SetText(L.METER_TITLE)
-  f:SetScript("OnDragStart", function(self) if ns.unlocked then self:StartMoving() end end)
+  -- Always draggable: grab it anywhere and move it.
+  f:EnableMouse(true)
+  f:SetScript("OnDragStart", function(self) self:StartMoving() end)
   f:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local point, _, rel, x, y = self:GetPoint(1)
-    ns.Settings().meter.point = { point, rel, x, y }
+    local saved = { point, rel, x, y }
+    ns.Settings().meter.point = saved
+    self.placed = saved
   end)
   f:Hide()
   return f
@@ -105,11 +109,14 @@ function Meter.Update()
   end
   panel:SetShown(show)
   if not show then return end
-  panel:EnableMouse(ns.unlocked == true)
   panel:SetScale(s.meter.scale / 100)
-  local p = s.meter.point
-  panel:ClearAllPoints()
-  if p then panel:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else panel:SetPoint("CENTER", 260, -120) end
+  -- Only re-place it when the saved spot changed (a reset), never while it is being dragged.
+  local p = s.meter.point or false
+  if panel.placed ~= p then
+    panel.placed = p
+    panel:ClearAllPoints()
+    if p then panel:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else panel:SetPoint("CENTER", 260, -120) end
+  end
 
   for i in ipairs(sorted) do sorted[i] = nil end
   for _, h in pairs(ns.Roster.healers) do sorted[#sorted + 1] = h end

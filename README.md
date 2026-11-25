@@ -40,7 +40,9 @@ A small button appears when your role is Healer and you're in a group.
 - **Left-click:** posts `[SoThirsty] <you> needs a drink - hold the pull`
 - **Right-click:** posts `[SoThirsty] <you> is good to go`
 
-It posts to party, raid or instance chat, whichever your group uses. Limits: 30 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines.
+It posts to party, raid or instance chat, whichever your group uses. Limits: 30 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines. Drag the button to move it.
+
+**Want it on a key?** `/sot macro` makes two macros ("SoT Drink" and "SoT Ready") and puts the first on your cursor to drop on an action bar. Or bind keys directly under **Key Bindings > AddOns > So Thirsty**.
 
 ## Commands
 
@@ -54,7 +56,8 @@ It posts to party, raid or instance chat, whichever your group uses. Limits: 30 
 | `/sot levels 50 30 10` | Set the three levels |
 | `/sot drink` / `ready` | Same as clicking the button |
 | `/sot meter` | Show or hide the thirst meter (a small panel of healer mana bars) |
-| `/sot move` / `lock` | Unlock or lock the button and the meter to drag them |
+| `/sot move` / `lock` | Show the button and the meter so you can place them |
+| `/sot macro` | Make action-bar macros for the two chat lines |
 | `/sot test` | Play the preview (nothing is posted) |
 | `/sot ghost 25` | How strongly the faint waterskin shows behind windows (0 = off) |
 | `/sot minimap` | Show or hide the minimap button |

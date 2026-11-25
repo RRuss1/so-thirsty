@@ -185,6 +185,7 @@ local COMMANDS = {
     ns.Print(L.GHOST_SET:format(math.floor(n)))
   end,
   status = function() ns.PrintStatus() end,
+  macro = function() ns.Button.MakeMacros() end,
   minimap = function()
     if ns.ToggleMinimap then ns.ToggleMinimap() end
   end,
@@ -199,6 +200,11 @@ local COMMANDS = {
     if fn then fn() end
   end,
 }
+
+-- Key Bindings > AddOns (Bindings.xml).
+BINDING_HEADER_SOTHIRSTY = L.ADDON
+BINDING_NAME_SOTHIRSTY_DRINK = L.M_DRINK
+BINDING_NAME_SOTHIRSTY_READY = L.M_READY
 
 SLASH_SOTHIRSTY1 = "/sot"
 SLASH_SOTHIRSTY2 = "/thirsty"

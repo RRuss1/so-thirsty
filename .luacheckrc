@@ -12,6 +12,7 @@ files["addon/tests/"] = { std = "lua51+luajit", allow_defined_top = true, allow_
 globals = {
   "SoThirstyDB", "SLASH_SOTHIRSTY1", "SLASH_SOTHIRSTY2", "SlashCmdList",
   -- addon compartment callbacks named in the TOC
+  "BINDING_HEADER_SOTHIRSTY", "BINDING_NAME_SOTHIRSTY_DRINK", "BINDING_NAME_SOTHIRSTY_READY",
   "SoThirsty_OnAddonCompartmentClick", "SoThirsty_OnAddonCompartmentEnter", "SoThirsty_OnAddonCompartmentLeave",
 }
 
@@ -31,4 +32,6 @@ read_globals = {
   "C_ChatInfo", "SendChatMessage",
   -- minimap button and menu
   "Minimap", "GetCursorPosition", "MenuUtil",
+  -- macros (/sot macro)
+  "CreateMacro", "GetMacroIndexByName", "PickupMacro",
 }

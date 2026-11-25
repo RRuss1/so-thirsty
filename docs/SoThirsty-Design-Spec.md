@@ -261,7 +261,7 @@ For each tracked healer, one **holder**: our own plain, non-secure `Frame`, `Set
 
 The only thing that ever posts to chat, and only on a click.
 
-- A small movable button with the drink icon. Shown when **my role is Healer** and I'm in a group, out of combat (`button.show = "healer"`; also `"always"` / `"never"`). Also reachable with `/sot drink`, `/sot ready`, and the addon compartment menu.
+- A small button with the drink icon. Drag it any time to move it. Shown when **my role is Healer** and I'm in a group, out of combat (`button.show = "healer"`; also `"always"` / `"never"`). Also reachable with `/sot drink`, `/sot ready`, and the addon compartment menu.
 - **Left-click:** posts the thirsty line. **Right-click:** posts the ready line.
 - **Tint:** the button's border takes my own mana color from the same color curve, so it glows as I run dry.
 - **Cooldown:** greyed for 30 s after a line, with the game's cooldown swipe. Greyed in combat.
@@ -272,14 +272,15 @@ The only thing that ever posts to chat, and only on a click.
   - Ready: `{name} is good to go`
 - Prefix `[SoThirsty]` (`button.prefix`, default on), so people know it came from an addon.
 - No mana number in the line: the addon doesn't have one.
+- **Keys:** `/sot macro` makes two ordinary macros (`/sot drink`, `/sot ready`) for action bar slots, out of combat, only if they do not exist yet. `Bindings.xml` also adds both lines under Key Bindings > AddOns. Either way the same rules and caps apply.
 
 ### 8.3 The thirst meter (`UI/Meter.lua`, option, off by default)
 
-- A tiny movable panel: one row per healer, class-colored name and a mana bar.
+- A tiny panel you can drag any time: one row per healer, class-colored name and a mana bar.
 - The bar is a `StatusBar` on a 0–1 range, fed `UnitPowerPercent(unit, Mana)` (secret; the bar accepts it). Its color comes from the color curve; above level 1 it's water blue.
 - Tick marks every 10%, with the three level lines slightly brighter.
 - Shown out of combat only, in the same zones as the glow. Drinking shows the drop icon next to the name.
-- Unlock to drag (`/sot move`, `/sot lock`); position saved.
+- Drag it any time; the position is saved. `/sot move` shows the meter and the button even when they would be hidden, so they can be placed; `/sot lock` ends that.
 
 ### 8.4 What v2 doesn't have
 
@@ -314,7 +315,7 @@ One-click **feel presets** set the motion options (colors are left alone):
 
 **Highlight style** (`look.style`):
 
-- `"glow"` (default): soft outer glow using the `glow-*.tga` textures.
+- `"glow"` (default): a soft glow just inside the frame edge, using the `glow-*.tga` textures (they are drawn to grow inward).
 - `"border"`: solid border, thickness 1–4 px (`look.thickness`, default 2).
 - `"corners"`: four small corner brackets. The least intrusive option.
 - `"tint"`: a translucent fill over the whole frame.
@@ -461,7 +462,8 @@ The addon's own window via `ns.CreateWindow`, plus an entry under Esc > Options 
 | `/sot levels 50 30 10` | Quick-set thresholds (validated) |
 | `/sot drink` / `ready` | Same as clicking the button (same rules and caps) |
 | `/sot meter` | Show / hide the thirst meter |
-| `/sot move` / `lock` | Unlock / lock the button and the meter |
+| `/sot move` / `lock` | Show the button and the meter so they can be placed (they drag any time) |
+| `/sot macro` | Makes the "SoT Drink" and "SoT Ready" macros and puts the first on the cursor |
 | `/sot test` | Plays the preview. Never posts to chat. |
 | `/sot ghost 25` | Window ghost strength |
 | `/sot minimap` | Show / hide the minimap button |
@@ -579,6 +581,18 @@ From `/sot debug curve`, same client, out of combat:
 From `/sot debug swatch` (player, spending mana from 100% to 4%):
 
 - **Q19: the curve input is 0–1** (0.5 = half mana). The color square went green (100%), amber (42%), orange-red (14%), red (4%); the fade square, stepped at 0.9, appeared below 90%. Both update live on `UNIT_POWER_UPDATE` for the player. Party members still to confirm in a group.
+
+From `/sot debug party`, `/sot debug frames` and `/sot debug drink` (design v2 build, party of 3, open world, out of combat, Blizzard raid-style party frames):
+
+- **Q20: yes.** The color and strength curves work on party members' mana, and `SetVertexColor` / `SetAlpha` accept the results, for the player and both party members.
+- **Q21: yes.** `UnitInRange` is secret, and both `Texture:SetAlphaFromBoolean` and `Frame:SetAlphaFromBoolean` accept it. The refresh event is still to confirm.
+- **Q23: yes.** `UnitPowerPercent(unit, Mana, false, CurveConstants.ZeroToOne)` works and `StatusBar:SetValue` accepts it; the thirst meter fills correctly.
+- **Q24: yes.** `StatusBar:SetStatusBarColor` and its texture's `SetVertexColor` both take secret color parts.
+- **Q8:** with raid-style party frames on, the frames are `CompactPartyFrameMember1..N`, the player included. Classic party frames still to check.
+- **Q11:** aura names and spell IDs are readable out of combat, for the player and for party members (their scans returned a clean `false`, not hidden). The drink buff is **"Drink", spell 1135** (Moonberry Juice).
+- **Q6:** `SendChatMessage` to PARTY works from a button click, out of combat, in the open world. Instances still to check.
+- **Q22** (pulse animation over a secret alpha) is still open: nobody was below level 3 during the test.
+- Found in the same test: the glow art is drawn to grow inward, so an outward glow made its corner pieces cross. The glow now sits just inside the frame edge.
 
 ---
 

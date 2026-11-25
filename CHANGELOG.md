@@ -12,6 +12,9 @@ In-game tests showed that Forever always hides mana from addons, so the first de
 - **Options window** (`UI/Options.lua`): Levels, Look, Motion, Button and General tabs, color pickers, palettes, feel presets and a live preview. `/sot` opens it; `/sot test` plays the preview.
 - `Levels.lua` rewritten as pure curve-point and visibility logic, with tests. v1 settings are migrated.
 - **Minimap button** (`UI/Minimap.lua`): left-click for Options, right-click for a menu of every command, drag to move. `/sot minimap` hides it.
+- **Keys for the drink lines:** `/sot macro` makes action-bar macros; Key Bindings > AddOns has both lines too.
+- The thirst meter and the drink button can be dragged any time.
+- First group test: curves, range fade, meter bars and drink buffs all work on party members (spec 16 Q20-Q24). Fixed the glow, whose corner pieces crossed outside the frame.
 - New checks: `/sot debug party`, `/sot debug frames`, `/sot debug icons`.
 - Removed: automatic chat lines, sounds, the on-screen banner, the poster election and addon messages. They all needed the mana number.
 

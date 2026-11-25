@@ -7,7 +7,9 @@ local Drink = {}
 ns.Drink = Drink
 
 -- Drink buff spell IDs, filled in as /sot debug drink finds them on Forever (spec 16 Q11).
-Drink.SPELL_IDS = {}
+Drink.SPELL_IDS = {
+  [1135] = true, -- "Drink" (Moonberry Juice), seen with /sot debug drink
+}
 
 local drinkNames
 local function isDrinkName(name)
