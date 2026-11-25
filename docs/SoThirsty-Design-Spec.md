@@ -710,7 +710,11 @@ From `/sot debug curve`, same client, out of combat:
   - `UnitPowerPercent(unit, Mana, false, curve)` returns a secret number; `Texture:SetAlpha` accepts it.
   - `UnitPowerPercent(unit, Mana, false, colorCurve)` returns a color object whose `GetRGB()` is secret; `Texture:SetVertexColor` accepts it.
   - Textures also have `SetAlphaFromBoolean` and `SetVertexColorFromBoolean`.
-  - Scale still open (Q19): the test ran at 100% mana.
+  - Scale: see Q19.
+
+From `/sot debug swatch` (player, spending mana from 100% to 4%):
+
+- **Q19: the curve input is 0–1** (0.5 = half mana). The color square went green (100%), amber (42%), orange-red (14%), red (4%); the fade square, stepped at 0.9, appeared below 90%. Both update live on `UNIT_POWER_UPDATE` for the player. Party members still to confirm in a group.
 
 ---
 
