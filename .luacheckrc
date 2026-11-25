@@ -23,7 +23,7 @@ read_globals = {
   -- units
   "UnitExists", "UnitGUID", "UnitName", "UnitClass", "UnitIsUnit", "UnitGroupRolesAssigned", "UnitIsDeadOrGhost",
   "UnitIsConnected", "UnitPower", "UnitPowerMax", "UnitPowerType", "UnitAffectingCombat", "UnitInRange",
-  "UnitIsGroupLeader", "UnitAura", "C_UnitAuras", "issecretvalue", "Enum",
+  "UnitIsGroupLeader", "UnitAura", "C_UnitAuras", "issecretvalue", "Enum", "UnitHealth", "UnitHealthMax",
   -- group, world & client
   "IsInGroup", "IsInRaid", "IsInInstance", "LE_PARTY_CATEGORY_INSTANCE", "InCombatLockdown",
   "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer",

@@ -82,6 +82,65 @@ function ns.DebugDrink()
   end)
 end
 
+-- /sot debug mana: tries every official way to read mana, since plain UnitPower came back
+-- secret even out of combat (spec 16 Q2, Q17). Read-only: it never works around a secret.
+local function try(label, fn, ...)
+  if not fn then return line(label, "missing") end
+  local ok, a, b = pcall(fn, ...)
+  if not ok then return line(label, "error: " .. tostring(a)) end
+  line(label, a, b)
+end
+
+-- Global names that hint at secret-value helpers (issecretvalue, canaccessvalue, C_Secrets...).
+local function secretGlobals()
+  local found = {}
+  for k in pairs(_G) do
+    if type(k) == "string" and (k:find("[Ss]ecret") or k:find("Restrict") or k:find("Curve")) then
+      found[#found + 1] = k
+    end
+  end
+  table.sort(found)
+  return found
+end
+
+local function probeUnit(unit, mt)
+  if not UnitExists(unit) then return end
+  DEFAULT_CHAT_FRAME:AddMessage(("|cff4fc3f7[%s]|r %s"):format(unit, show(UnitName(unit))))
+  try("UnitPower(u)", UnitPower, unit)
+  try("UnitPower(u, mana)", UnitPower, unit, mt)
+  try("UnitPower(u, mana, true)", UnitPower, unit, mt, true)
+  try("UnitPowerMax(u, mana)", UnitPowerMax, unit, mt)
+  try("UnitPowerPercent(u, mana)", _G.UnitPowerPercent, unit, mt)
+  try("UnitHealth / Max (compare)", function() return UnitHealth(unit), UnitHealthMax(unit) end)
+  local secrets = _G.C_Secrets
+  if type(secrets) == "table" then
+    for name, fn in pairs(secrets) do
+      if type(fn) == "function" and name:find("Power") then try("C_Secrets." .. name, fn, unit, mt) end
+    end
+  end
+end
+
+-- Can a status bar take a secret mana value? If yes, a mana display can still work even
+-- when the addon can't read the number itself.
+local function probeBar(mt)
+  local bar = CreateFrame("StatusBar")
+  local okMax = pcall(bar.SetMinMaxValues, bar, 0, 1)
+  local okSet, err = pcall(bar.SetValue, bar, UnitPower("player", mt))
+  line("StatusBar accepts secret mana", okMax and okSet or ("no: " .. tostring(err)))
+  if okSet then line("StatusBar:GetValue()", bar:GetValue()) end
+end
+
+function ns.DebugMana()
+  ns.Print(L.DEBUG_MANA_HEADER)
+  local mt = manaType() or 0
+  line("InCombatLockdown / instance", InCombatLockdown(), (IsInInstance()))
+  local names = secretGlobals()
+  line("secret-related globals", #names > 0 and table.concat(names, ", ") or "none")
+  local units = ns.Roster.GroupUnits() or { "player" }
+  for _, unit in ipairs(units) do probeUnit(unit, mt) end
+  probeBar(mt)
+end
+
 -- /sot debug window: opens a sample window, to check the look and that the game textures it
 -- borrows exist on Forever (spec 16 Q16).
 local sample
