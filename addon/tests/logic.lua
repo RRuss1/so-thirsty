@@ -267,8 +267,8 @@ do
   local log = {}
   eq("ButtonAllowed: first click", Levels.ButtonAllowed(100, log), true)
   log[1] = 100
-  eq("  second inside 30 s: cooldown", select(2, Levels.ButtonAllowed(120, log)), "COOLDOWN")
-  eq("  after 30 s: ok", Levels.ButtonAllowed(131, log), true)
+  eq("  second inside 15 s: cooldown", select(2, Levels.ButtonAllowed(110, log)), "COOLDOWN")
+  eq("  after 15 s: ok", Levels.ButtonAllowed(131, log), true)
   log[2], log[3] = 131, 170
   eq("  fourth inside 5 min: cap", select(2, Levels.ButtonAllowed(210, log)), "CAP")
   eq("  once the first ages out: ok", Levels.ButtonAllowed(401, log), true)
@@ -522,9 +522,9 @@ do
   sent, printed = {}, {}
   eq("a click posts one line", Button.Say("thirsty"), true)
   eq("  to party chat, with the tag", sent[1], "PARTY: [SoThirsty] Tanky needs a drink - hold the pull")
-  eq("a second click inside 30 s is refused", Button.Say("thirsty"), false)
+  eq("a second click inside 15 s is refused", Button.Say("thirsty"), false)
   eq("  nothing more sent", #sent, 1)
-  check("  and it says why", (printed[#printed] or ""):find("30 seconds") ~= nil)
+  check("  and it says why", (printed[#printed] or ""):find("15 seconds") ~= nil)
   clock = clock + 31
   eq("after the cooldown: ready line", Button.Say("ready"), true)
   eq("  the ready text", sent[2], "PARTY: [SoThirsty] Tanky is good to go")

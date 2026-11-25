@@ -40,7 +40,7 @@ A small button appears when your role is Healer and you're in a group.
 - **Left-click:** posts `[SoThirsty] <you> needs a drink - hold the pull`
 - **Right-click:** posts `[SoThirsty] <you> is good to go`
 
-It posts to party, raid or instance chat, whichever your group uses. Limits: 30 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines. Drag the button to move it.
+It posts to party, raid or instance chat, whichever your group uses. Limits: 15 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines. Drag the button to move it.
 
 **Want it on a key?** `/sot macro` makes two macros ("SoT Drink" and "SoT Ready") and puts the first on your cursor to drop on an action bar. Or bind keys directly under **Key Bindings > AddOns > So Thirsty**.
 

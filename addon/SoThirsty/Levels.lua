@@ -7,7 +7,7 @@ local _, ns = ...
 local Levels = {}
 ns.Levels = Levels
 
-Levels.COOLDOWN = 30     -- seconds between drink-button lines
+Levels.COOLDOWN = 15     -- seconds between drink-button lines
 Levels.CAP = 3           -- lines per CAP_WINDOW
 Levels.CAP_WINDOW = 300
 local EPS = 0.001        -- how close two curve points sit to make a hard edge

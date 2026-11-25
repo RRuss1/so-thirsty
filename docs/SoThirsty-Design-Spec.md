@@ -36,7 +36,7 @@ These rules beat every other setting. If a feature would break one of them, the 
 2. **Out of combat.** The glow is hidden in combat (or very faint, if the player chooses). Nothing new appears mid-fight.
 3. **One nudge per fight.** `nudgeDelay` (default **5 s**) after the group leaves combat, the glow brightens for a few seconds, then settles. If combat restarts first, the nudge is cancelled. No nudge after a wipe.
 4. **Drinking means dim.** A healer who is drinking gets a dimmed glow and no nudge.
-5. **Chat only when a person clicks.** The drink button posts **one line per click**, with a 30 s cooldown and a hard cap of **3 lines per 5 minutes**. Never in combat, never in battlegrounds or arenas, never to SAY, YELL or RAID_WARNING.
+5. **Chat only when a person clicks.** The drink button posts **one line per click**, with a 15 s cooldown and a hard cap of **3 lines per 5 minutes**. Never in combat, never in battlegrounds or arenas, never to SAY, YELL or RAID_WARNING.
 6. **No raid warnings.** Never `RaidWarningFrame` / `RaidNotice_AddMessage`.
 7. **Never work around a secret.** The addon never tries to recover a hidden number (no reading text back, no measuring bars, no pixel tricks). It only hands secret values to the game functions built to take them.
 
@@ -183,7 +183,7 @@ No WoW API calls. Numbers, booleans and tables in; plain tables out. `Curves.lua
   4. Drinking → alpha `look.drinkDim` (default 35%), drinking.
   5. Otherwise → alpha `look.rest` (default 70%): the resting brightness. The nudge lifts it to 100% for a moment.
 - **`Levels.CanNudge(known, wiped)`** → true only when enabled, zone ok, out of combat, not dead/offline, not drinking and not wiped.
-- **`Levels.ButtonAllowed(now, log, cfg)`** → `true`, or `false` plus `"COOLDOWN"` / `"CAP"`. `log` is the list of the player's recent send times. 30 s between lines; 3 lines per 300 s.
+- **`Levels.ButtonAllowed(now, log, cfg)`** → `true`, or `false` plus `"COOLDOWN"` / `"CAP"`. `log` is the list of the player's recent send times. 15 s between lines; 3 lines per 300 s.
 
 The final picture is **holder alpha (known) × texture alpha (secret, from the strength curve)**. The addon sets the first on a parent frame and the game applies the second on the texture, so the two never have to be multiplied in Lua.
 
@@ -197,7 +197,7 @@ The final picture is **holder alpha (known) × texture alpha (secret, from the s
 - `PulsePoints` and `ReadyPoints` step at the right x for custom thresholds.
 - `Holder`: each rule above, in priority order (dead beats drinking; combat beats drinking; off beats everything).
 - `CanNudge`: false for drinking, wiped, combat, dead; true otherwise.
-- `ButtonAllowed`: first click ok; second inside 30 s → COOLDOWN; fourth inside 5 min → CAP; allowed again once old entries age out.
+- `ButtonAllowed`: first click ok; second inside 15 s → COOLDOWN; fourth inside 5 min → CAP; allowed again once old entries age out.
 - Roster and slash-command tests from Phase 2 stay.
 
 ### 6.4 Drink detection (`Drink.lua`)
@@ -264,9 +264,9 @@ The only thing that ever posts to chat, and only on a click.
 - A small button with the drink icon. Drag it any time to move it. Shown when **my role is Healer** and I'm in a group, out of combat (`button.show = "healer"`; also `"always"` / `"never"`). Also reachable with `/sot drink`, `/sot ready`, and the addon compartment menu.
 - **Left-click:** posts the thirsty line. **Right-click:** posts the ready line.
 - **Tint:** the button's border takes my own mana color from the same color curve, so it glows as I run dry.
-- **Cooldown:** greyed for 30 s after a line, with the game's cooldown swipe. Greyed in combat.
+- **Cooldown:** greyed for 15 s after a line, with the game's cooldown swipe. Greyed in combat.
 - **Channel** by group type: `INSTANCE_CHAT` if `IsInGroup(LE_PARTY_CATEGORY_INSTANCE)`, else `RAID` if `IsInRaid()`, else `PARTY`. Never `SAY`, `YELL` or `RAID_WARNING`. Three checks say where the button may post: **Party / Raid / Instance** (`button.party`, `button.raid`, `button.instance`, all on by default). If the current group type is unchecked, the click prints a local note and sends nothing.
-- **Rules** (hard, from 1.1): `Levels.ButtonAllowed` (30 s, 3 per 5 min); never in combat; never in battlegrounds or arenas.
+- **Rules** (hard, from 1.1): `Levels.ButtonAllowed` (15 s, 3 per 5 min); never in combat; never in battlegrounds or arenas.
 - **Lines** (editable; tokens `{name}`, `{class}`):
   - Thirsty: `{name} needs a drink - hold the pull`
   - Ready: `{name} is good to go`
@@ -511,7 +511,7 @@ Each phase ends with: luacheck clean, tests passing on lua5.1 and luajit, a CHAN
 | **2. Roster + probes** ✔ | `Roster.lua`, `Drink.lua`, `/sot status`, and the `/sot debug mana` / `curve` / `swatch` probes that led to design v2 | Roles tracked; Q1, Q2, Q17–Q19 answered. |
 | **3. Glow** | Remove the v1 mana-reading code. `Levels.lua` v2 + tests (6.3), `Curves.lua`, `Frames.lua` (glow layer, holder alpha, drinking dim + drop, grey edge, hidden in combat), settings migration, `/sot debug party`, `/sot debug frames`, `/sot test` | First: `/sot debug party` confirms curves work on a party member (Q20). Then: in a party, the healer's frame glows below 50% and reddens as mana falls; it hides in combat, dims while they drink, and there are no taint errors. |
 | **4. Motion** | `Combat.lua` (group combat, nudge timer, wipe flag), nudge animation, pulse layer, ready tick, range fade | One nudge 5 s after a fight; none on chain pulls or after a wipe; the pulse shows only below 10%. |
-| **5. Drink button** | `Button.lua`: button, tint, cooldown, chat lines, caps, channel checks, `/sot drink` / `ready`, move/lock | A click posts one line to the right channel. A second click inside 30 s does nothing. Nothing in combat or in battlegrounds. |
+| **5. Drink button** | `Button.lua`: button, tint, cooldown, chat lines, caps, channel checks, `/sot drink` / `ready`, move/lock | A click posts one line to the right channel. A second click inside 15 s does nothing. Nothing in combat or in battlegrounds. |
 | **6. Options + meter** | Full options window, palettes, styles, presets, live preview, `UI/Meter.lua`, `Theme.lua`, Esc-menu entry, `/sot debug icons` | Changing levels to 60/40/20 moves the glow at once. Steps vs smooth is visible. Every style and palette renders. The meter moves and remembers its spot. |
 | **7. Release** | README (players), `docs/curseforge-description.md`, CurseForge project ID in the TOCs, `v1.0.0` tag | Packager builds a zip; installing it from CurseForge works on Forever. |
 

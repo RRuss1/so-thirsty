@@ -7,7 +7,7 @@ In-game tests showed that Forever always hides mana from addons, so the first de
 - **Glow on healer frames** (`Frames.lua`, `Curves.lua`): color and strength come from the game's curve functions, in 10% bands (smooth or stepped). Five styles: soft glow, border, corners, tint, bar strip.
 - **Known-state dimming:** hidden in combat (or very faint), dimmed with a drink icon while the healer drinks, a grey edge for dead or offline healers.
 - **Motion** (`Combat.lua`): one nudge 5 seconds after a fight, skipped on chain pulls, after a wipe and for drinking healers; a slow pulse below level 3; optional ready tick and range fade.
-- **Drink button** (`Button.lua`): "I need a drink" / "good to go", one line per click, 30 s cooldown, 3 lines per 5 minutes, never in combat or PvP. `/sot drink`, `/sot ready`.
+- **Drink button** (`Button.lua`): "I need a drink" / "good to go", one line per click, 15 s cooldown, 3 lines per 5 minutes, never in combat or PvP. `/sot drink`, `/sot ready`.
 - **Thirst meter** (`UI/Meter.lua`, off by default): a small movable panel of healer mana bars.
 - **Options window** (`UI/Options.lua`): Levels, Look, Motion, Button and General tabs, color pickers, palettes, feel presets and a live preview. `/sot` opens it; `/sot test` plays the preview.
 - `Levels.lua` rewritten as pure curve-point and visibility logic, with tests. v1 settings are migrated.

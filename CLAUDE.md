@@ -14,7 +14,7 @@ The full design lives in `docs/SoThirsty-Design-Spec.md`. Read it before any wor
 - Curves are the only path: Levels.lua makes plain point lists, Curves.lua builds `C_CurveUtil` curves and calls `UnitPowerPercent(unit, Mana, false, curve)`, and the secret result goes straight into SetVertexColor / SetAlpha / SetValue on our own textures. The curve input is 0–1.
 - Never work around a secret: no reading text or bar values back, no measuring widths, no pixel tricks (spec 1.1).
 - The quiet contract (spec 1.1) beats every other setting: silent by default, hidden in combat, one nudge per fight (5 s after combat), drinking means dim, chat only when a person clicks.
-- Chat: only the drink button / `/sot drink` / `/sot ready` may post, one line per click, 30 s cooldown, 3 lines per 5 min. Never in combat, never in battlegrounds or arenas, never to SAY/YELL/RAID_WARNING. Channel per group type, gated by the Party / Raid / Instance checks.
+- Chat: only the drink button / `/sot drink` / `/sot ready` may post, one line per click, 15 s cooldown, 3 lines per 5 min. Never in combat, never in battlegrounds or arenas, never to SAY/YELL/RAID_WARNING. Channel per group type, gated by the Party / Raid / Instance checks.
 - No raid warnings of any kind: never RaidWarningFrame / RaidNotice_AddMessage. No automatic sounds.
 - Healers = UnitGroupRolesAssigned(unit) == "HEALER". Nothing else.
 - Never taint Blizzard frames: our own non-secure holders, parented to UIParent, created and anchored out of combat. Post-hooks (HookScript) only; never replace or set anything on a Blizzard frame.
