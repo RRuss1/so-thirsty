@@ -363,7 +363,7 @@ Build the interface from the game's own assets wherever one exists. Ship art onl
 - **Bars:** `Interface\TargetingFrame\UI-StatusBar` for the meter.
 - **Fonts:** the game's font objects.
 - **Window ghost:** `ghost.tga` is the icon, greyscaled, softened and faded to transparent well before its edges. It sits faintly in the middle of every SoThirsty window, tinted toward the violet. Strength is `look.ghost` (0–100 %, default **25**, 0 = off): a slider on the Look tab, and `/sot ghost <n>`.
-- **What we ship:** `logo.tga` / `logo-128.tga`, `ghost.tga` and the three `glow-*.tga` pieces. Nothing else unless a game asset is missing on Forever (then the replacement goes in `Media/` and the reason in Section 16). Fallback backgrounds sit in `art/fallback/`.
+- **What we ship:** `logo.tga` / `logo-128.tga`, `minimap.tga` (the first icon, `art/SoThirstyIcon.png`, 64 px: the waterskin alone reads better at minimap size), `ghost.tga` and the three `glow-*.tga` pieces. Nothing else unless a game asset is missing on Forever (then the replacement goes in `Media/` and the reason in Section 16). Fallback backgrounds sit in `art/fallback/`.
 - **Palette** (from the icon, `art/SoThirstyIcon2.png`): violet haze `#4F2365` over plum-slate stone `#2F1E22` for backgrounds, violet glow `#9E4DFF`, candle gold `#FACC5C` for titles, brass `#BF8C33` for fine edges, leather `#A5603A` for section markers, fel green `#6BE04D` as a sparing accent, warm white `#F2EBE0` body text. Water blue `#4FC3F7` stays for the chat prefix and the drinking drop.
 - **Icon sizes:** `logo.tga` 64 px, `logo-128.tga` 128 px, `art/logo-256.png` for CurseForge.
 

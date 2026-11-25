@@ -9,7 +9,7 @@
 local _, ns = ...
 local L = ns.L
 
-local ICON = "Interface\\AddOns\\SoThirsty\\Media\\logo"
+local ICON = "Interface\\AddOns\\SoThirsty\\Media\\minimap" -- the first icon (art/SoThirstyIcon.png)
 local button
 
 local function settings() return ns.Settings().minimap end
