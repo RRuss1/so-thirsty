@@ -12,7 +12,7 @@ local ICON = MEDIA .. "logo-128"
 -- client lacks it, art/fallback/ has addon-made backgrounds; spec 16 Q16.)
 local WINDOW_BG = { file = "Interface\\FrameGeneral\\UI-Background-Rock", tint = { 0.45, 0.3, 0.58, 1 } }
 local PANEL_BG = { file = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark", tint = { 0.6, 0.45, 0.75, 0.9 } }
--- The logo in black and white (Media/ghost.tga, from art/logo-256.png): a faint ghost of it
+-- The logo in black and white (Media/ghost.tga, from art/SoThirstyIconPublic.jpeg): a faint ghost of it
 -- fills every window's content panel. Strength is settings.look.ghost (0-100 %, 0 = off).
 local GHOST = MEDIA .. "ghost"
 local GHOST_TINT = { 1, 1, 1 } -- plain black and white
