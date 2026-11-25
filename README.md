@@ -31,7 +31,7 @@ It uses the game's **role**: right-click the healer's portrait > **Set Role** > 
 
 **Minimap button:** left-click opens Options, right-click opens a menu of every command, drag to move it.
 
-Levels move in steps of 10. Colors, glow style, strength, the pulse, the nudge and more are in the Options window (`/sot`).
+Levels move in steps of 10. Colors, glow style, strength, the pulse, the nudge and more are in the Options window (`/sot`). Changes show right away so you can judge them; press **Save** to keep them. Closing without Save undoes them.
 
 ## The drink button
 
@@ -59,7 +59,7 @@ It posts to party, raid or instance chat, whichever your group uses. Limits: 15 
 | `/sot move` / `lock` | Show the button and the meter so you can place them |
 | `/sot macro` | Make action-bar macros for the two chat lines |
 | `/sot test` | Play the preview (nothing is posted) |
-| `/sot ghost 25` | How strongly the faint waterskin shows behind windows (0 = off) |
+| `/sot ghost 25` | How strongly the black-and-white logo shows behind windows (0 = off) |
 | `/sot minimap` | Show or hide the minimap button |
 | `/sot debug` | What the game tells the addon (paste this into bug reports) |
 | `/sot debug party` | Checks that the glow works on group members |

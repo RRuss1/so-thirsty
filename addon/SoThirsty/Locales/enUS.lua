@@ -18,7 +18,7 @@ ns.L = {
     "  /sot meter: show or hide the thirst meter",
     "  /sot move | lock: show the drink button and the meter so you can place them (they drag any time)",
     "  /sot test: play the preview (nothing is posted to chat)",
-    "  /sot ghost 25: how strongly the faint waterskin shows behind windows (0 = off)",
+    "  /sot ghost 25: how strongly the black-and-white logo shows behind windows (0 = off)",
     "  /sot minimap: show or hide the minimap button",
     "  /sot debug: print what the game tells the addon (for bug reports)",
     "  /sot debug party | frames | drink | icons: in-game checks for the glow, unit frames, drink buffs and icons",
@@ -178,6 +178,13 @@ ns.L = {
   OPT_RESET_ALL = "Reset all",
   OPT_RESET_DONE = "All settings are back to their defaults.",
   OPT_DEBUG = "Debug info",
+  OPT_SAVE = "Save",
+  OPT_REVERT = "Undo changes",
+  OPT_UNSAVED = "Unsaved changes. Closing without Save undoes them.",
+  OPT_ALL_SAVED = "All changes saved.",
+  OPT_SAVED = "Settings saved.",
+  OPT_REVERTED = "Changes undone.",
+  OPT_DISCARDED = "Options closed without Save: your changes were undone.",
   OPT_OPEN = "Open So Thirsty options",
 
   -- options: preview

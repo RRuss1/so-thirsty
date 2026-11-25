@@ -59,6 +59,27 @@ local function applyDefaults(t, defaults)
 end
 ns.applyDefaults = applyDefaults
 
+-- A full copy of a settings table, and a deep comparison (the Options window's Save).
+local function deepCopy(t)
+  if type(t) ~= "table" then return t end
+  local copy = {}
+  for k, v in pairs(t) do copy[k] = deepCopy(v) end
+  return copy
+end
+ns.DeepCopy = deepCopy
+
+local function deepEqual(a, b)
+  if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+  for k, v in pairs(a) do
+    if not deepEqual(v, b[k]) then return false end
+  end
+  for k in pairs(b) do
+    if a[k] == nil then return false end
+  end
+  return true
+end
+ns.DeepEqual = deepEqual
+
 function ns.Settings() return SoThirstyDB.settings end
 
 -- Mana, health and range are always secret on Forever (spec Section 2). Never compare, test

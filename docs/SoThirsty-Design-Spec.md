@@ -363,7 +363,7 @@ Build the interface from the game's own assets wherever one exists. Ship art onl
 - **Icons:** game icons for the drop, the button and the ready tick (for example `Interface\Icons\INV_Drink_07`, `Interface\RaidFrame\ReadyCheck-Ready`).
 - **Bars:** `Interface\TargetingFrame\UI-StatusBar` for the meter.
 - **Fonts:** the game's font objects.
-- **Window ghost:** `ghost.tga` is the icon, greyscaled, softened and faded to transparent well before its edges. It sits faintly in the middle of every SoThirsty window, tinted toward the violet. Strength is `look.ghost` (0–100 %, default **25**, 0 = off): a slider on the Look tab, and `/sot ghost <n>`.
+- **Window ghost:** `ghost.tga` is the logo (`art/logo-256.png`) in plain black and white. It fills the whole content panel of every SoThirsty window, cropped rather than squashed, faintly behind all text and controls. Strength is `look.ghost` (0–100 %, default **25**, 0 = off): a slider on the Look tab, and `/sot ghost <n>`.
 - **What we ship:** `logo.tga` / `logo-128.tga`, `minimap.tga` (the first icon, `art/SoThirstyIcon.png`, 64 px: the waterskin alone reads better at minimap size), `ghost.tga` and the three `glow-*.tga` pieces. Nothing else unless a game asset is missing on Forever (then the replacement goes in `Media/` and the reason in Section 16). Fallback backgrounds sit in `art/fallback/`.
 - **Palette** (from the icon, `art/SoThirstyIcon2.png`): violet haze `#4F2365` over plum-slate stone `#2F1E22` for backgrounds, violet glow `#9E4DFF`, candle gold `#FACC5C` for titles, brass `#BF8C33` for fine edges, leather `#A5603A` for section markers, fel green `#6BE04D` as a sparing accent, warm white `#F2EBE0` body text. Water blue `#4FC3F7` stays for the chat prefix and the drinking drop.
 - **Icon sizes:** `logo.tga` 64 px, `logo-128.tga` 128 px, `art/logo-256.png` for CurseForge.
@@ -451,7 +451,8 @@ The addon's own window via `ns.CreateWindow`, plus an entry under Esc > Options 
 - **Button & chat:** show (healer/always/never), Party / Raid / Instance checks, prefix, the two lines with token help and Reset, the preview line, unlock to move.
 - **Meter:** on/off, scale, unlock to move.
 - **General:** enabled, zones, combat check (group/me), role hint.
-- **Bottom buttons:** **Preview**, **Debug info**, **Reset all**, **Close**.
+- **Save / Undo changes** (bottom left): a change shows at once, on the preview and on the real frames, so it can be judged. It only sticks when **Save** is pressed. **Undo changes** goes back to the last save. Closing the window with unsaved changes (the X, Escape) undoes them and says so in chat. Where the button, meter and minimap button were dragged to always sticks. Slash commands (`/sot levels`, `/sot meter`...) still apply at once when the window is closed.
+- **Other buttons:** **Play** and **Show the nudge** (preview), **Debug info**, **Reset all**.
 
 ### 12.3 Slash commands (`/thirsty`, `/sot`)
 

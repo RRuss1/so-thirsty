@@ -611,5 +611,20 @@ do
   eq("  level 3 turns violet", s.levels[3].color[3], 0.97)
 end
 
+-- ---------------------------------------------------------------- Save / Revert helpers
+
+do
+  local s = SoThirstyDB.settings
+  local copy = ns.DeepCopy(s)
+  check("DeepCopy makes new tables", copy ~= s and copy.levels ~= s.levels and copy.levels[1].color ~= s.levels[1].color)
+  eq("DeepEqual: a copy matches", ns.DeepEqual(copy, s), true)
+  copy.levels[2].color[2] = 0.123
+  eq("DeepEqual: a nested change is seen", ns.DeepEqual(copy, s), false)
+  copy = ns.DeepCopy(s)
+  copy.button.thirstyMsg = "x"
+  eq("DeepEqual: an added key is seen", ns.DeepEqual(copy, s), false)
+  eq("  from either side", ns.DeepEqual(s, copy), false)
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then os.exit(1) end

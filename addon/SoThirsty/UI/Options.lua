@@ -468,8 +468,41 @@ end
 
 -- ---------------------------------------------------------------- the window
 
+-- Save / Revert (spec 12.2). Changes show at once, on the preview and on the real frames,
+-- but they only stick when Save is pressed. `saved` is the settings as of the last Save
+-- (or as of opening the window); closing with unsaved changes puts them back.
+local saved
+local saveButton, revertButton, saveState
+
+-- Where things were dragged to isn't a "setting to save": it always sticks.
+local function keepPlacement()
+  local s = ns.Settings()
+  saved.button.point = s.button.point and ns.DeepCopy(s.button.point) or nil
+  saved.meter.point = s.meter.point and ns.DeepCopy(s.meter.point) or nil
+  saved.minimap.angle = s.minimap.angle
+end
+
+local function unsaved()
+  if not saved then return false end
+  keepPlacement()
+  return not ns.DeepEqual(saved, ns.Settings())
+end
+
+local function save()
+  saved = ns.DeepCopy(ns.Settings())
+  ns.Print(L.OPT_SAVED)
+  ns.RefreshOptions()
+end
+
+local function revert()
+  if not saved then return end
+  keepPlacement()
+  SoThirstyDB.settings = ns.DeepCopy(saved)
+  ns.Apply()
+end
+
 local function buildWindow()
-  window = ns.CreateWindow("SoThirstyOptions", 700, 580, L.ADDON)
+  window = ns.CreateWindow("SoThirstyOptions", 700, 620, L.ADDON)
   local c = window.content
   local tabs, tabButtons = {}, {}
 
@@ -500,6 +533,25 @@ local function buildWindow()
   buildPreview(c)
   local debug = button(c, L.OPT_DEBUG, 100, function() ns.Debug() end)
   debug:SetPoint("BOTTOMRIGHT", -16, 16)
+
+  saveButton = button(c, L.OPT_SAVE, 100, save)
+  saveButton:SetPoint("BOTTOMLEFT", 12, 12)
+  revertButton = button(c, L.OPT_REVERT, 100, function()
+    revert()
+    ns.Print(L.OPT_REVERTED)
+  end)
+  revertButton:SetPoint("LEFT", saveButton, "RIGHT", 6, 0)
+  saveState = ns.Text(c, "muted", 11)
+  saveState:SetPoint("LEFT", revertButton, "RIGHT", 10, 0)
+
+  -- Closing (the X, Escape, /sot) without saving puts the settings back.
+  window:HookScript("OnHide", function()
+    if unsaved() then
+      revert()
+      ns.Print(L.OPT_DISCARDED)
+    end
+    saved = nil
+  end)
   show(1)
   window:Hide()
 end
@@ -509,14 +561,21 @@ function ns.RefreshOptions()
   if not window then return end
   for _, refresh in ipairs(refreshers) do refresh() end
   paintPreview()
+  local pending = unsaved()
+  saveButton:SetEnabled(pending)
+  revertButton:SetEnabled(pending)
+  saveState:SetText(pending and L.OPT_UNSAVED or L.OPT_ALL_SAVED)
+  local color = pending and ns.COLORS.gold or ns.COLORS.muted
+  saveState:SetTextColor(color[1], color[2], color[3])
 end
 
 function ns.ToggleOptions(forceOpen)
   if not window then buildWindow() end
-  if forceOpen or not window:IsShown() then
+  if not window:IsShown() then
+    saved = ns.DeepCopy(ns.Settings())
     ns.RefreshOptions()
     window:Show()
-  else
+  elseif not forceOpen then
     window:Hide()
   end
 end
