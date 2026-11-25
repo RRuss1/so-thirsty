@@ -298,6 +298,7 @@ do
   -- Units shift; the GUID keeps its state.
   local before = ns.Roster.ByUnit("party1")
   before.state.announced = 2
+  units.party1.mana = 250 -- 25%: still level 2, so the rescan's mana read doesn't re-arm it
   units.party3, units.party1 = units.party1, nil
   fire("GROUP_ROSTER_UPDATE")
   local after = ns.Roster.ByUnit("party3")
