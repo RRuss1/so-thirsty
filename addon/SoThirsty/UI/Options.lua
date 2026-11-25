@@ -337,6 +337,11 @@ local function tabList()
       { "head", L.OPT_GENERAL },
       check(L.OPT_ENABLED, S, "enabled"),
       check(L.OPT_ROLE_HINT, S, "roleHint"),
+      { "check", L.OPT_MINIMAP, function() return not S().minimap.hide end,
+        function(v)
+          S().minimap.hide = not v
+          ns.SetupMinimap()
+        end },
       cycle(L.OPT_COMBAT_SCOPE, S, "combatScope", { "group", "me" }, L.COMBAT_SCOPE),
       { "head", L.OPT_ZONES },
       check(L.OPT_ZONE_DUNGEON, zones, "dungeon"),

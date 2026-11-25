@@ -350,7 +350,7 @@ None in v2. The addon can't know when a healer crosses a level, so there's no mo
 
 - **Status tooltip:** hovering the compartment icon lists tracked healers and whether each is drinking, dead or offline. No mana numbers.
 - **`/sot status`** prints the same.
-- The compartment menu has: Options, I need a drink, Good to go, Show/hide meter.
+- **Minimap button** (`UI/Minimap.lua`, adapted from Bounty Line, no library): left-click opens Options, right-click opens a menu of every `/sot` command (each entry shows its command in grey), drag moves it around the minimap. `/sot minimap` or the menu hides it. The addon compartment entry does the same clicks.
 
 ### 9.7 Blizzard assets first
 
@@ -433,6 +433,7 @@ local DB_DEFAULTS = {
     meter = { enabled = false, point = nil, scale = 100 },
     zones = { dungeon = true, raid = true, world = true },
     roleHint = true,
+    minimap = { hide = false, angle = 215 },
     debugEvents = false,
   },
 }
@@ -463,6 +464,7 @@ The addon's own window via `ns.CreateWindow`, plus an entry under Esc > Options 
 | `/sot move` / `lock` | Unlock / lock the button and the meter |
 | `/sot test` | Plays the preview. Never posts to chat. |
 | `/sot ghost 25` | Window ghost strength |
+| `/sot minimap` | Show / hide the minimap button |
 | `/sot status` | Tracked healers and their known states |
 | `/sot debug` | Client build, group type, chat channel, combat flags, per-unit role and secret flags |
 | `/sot debug mana` / `curve` / `swatch` | The probes that answered Q17–Q19 |
@@ -483,7 +485,7 @@ The addon's own window via `ns.CreateWindow`, plus an entry under Esc > Options 
   - Curves are built once and rebuilt only when a level, color or look setting changes.
   - Unregister unit events when solo, in a disabled zone, or when no healer is assigned.
 - **Memory:** no per-refresh tables in hot paths. Reuse holders and curves.
-- **No** `OnUpdate` scripts. Timers use `C_Timer`; motion uses `AnimationGroup`.
+- **No** `OnUpdate` scripts, with one exception: the minimap button sets one while it is being dragged and removes it on release. Timers use `C_Timer`; motion uses `AnimationGroup`.
 - **Secrets:** never compare, branch on or do math with a secret. Guard every read with `ns.IsSecret`. Pass secrets only to `SetAlpha`, `SetVertexColor`, `SetValue`, `SetAlphaFromBoolean` and the curve-taking APIs.
 - All player-facing text goes in `Locales/enUS.lua` (lines up to 200 characters).
 - `.luacheckrc`: list every WoW API used in `read_globals`, and keep that list accurate.

@@ -29,4 +29,6 @@ read_globals = {
   "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer", "C_CurveUtil", "GetTime",
   -- chat (the drink button only, spec 8.2)
   "C_ChatInfo", "SendChatMessage",
+  -- minimap button and menu
+  "Minimap", "GetCursorPosition", "MenuUtil",
 }

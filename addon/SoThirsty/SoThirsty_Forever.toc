@@ -22,4 +22,5 @@ Button.lua
 Debug.lua
 UI\Window.lua
 UI\Meter.lua
+UI\Minimap.lua
 UI\Options.lua

@@ -20,7 +20,7 @@ The full design lives in `docs/SoThirsty-Design-Spec.md`. Read it before any wor
 - Never taint Blizzard frames: our own non-secure holders, parented to UIParent, created and anchored out of combat. Post-hooks (HookScript) only; never replace or set anything on a Blizzard frame.
 - Blizzard assets first (spec 9.7): game templates, ColorPickerFrame, textures, icons, fonts. Ship art only when the game has no equivalent. Every color option uses the color picker.
 - Window palette comes from the icon (`art/SoThirstyIcon2.png`): violet-lit stone, violet glow, candle gold, brass, leather, a touch of fel green (spec 9.7).
-- Keep it lightweight: no libraries, no OnUpdate (C_Timer and AnimationGroup only), unit events only for tracked healers, coalesced to one refresh per healer per 0.5 s.
+- Keep it lightweight: no libraries, no OnUpdate (C_Timer and AnimationGroup only; the one exception is the minimap button while it is being dragged), unit events only for tracked healers, coalesced to one refresh per healer per 0.5 s.
 - Keep the addon free, unobfuscated and ad-free (Blizzard UI Add-On Development Policy).
 
 ## How to work

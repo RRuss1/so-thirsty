@@ -41,6 +41,7 @@ local DB_DEFAULTS = {
     meter = { enabled = false, scale = 100 },
     zones = { dungeon = true, raid = true, world = true },
     roleHint = true,
+    minimap = { hide = false, angle = 215 },
     debugEvents = false,
   },
 }
@@ -184,6 +185,9 @@ local COMMANDS = {
     ns.Print(L.GHOST_SET:format(math.floor(n)))
   end,
   status = function() ns.PrintStatus() end,
+  minimap = function()
+    if ns.ToggleMinimap then ns.ToggleMinimap() end
+  end,
   debug = function(rest)
     if rest == "events" then
       local s = ns.Settings()
@@ -210,8 +214,8 @@ SlashCmdList.SOTHIRSTY = ns.RunCommand
 
 -- ---------------------------------------------------------------- addon compartment
 
-function SoThirsty_OnAddonCompartmentClick(_, button)
-  if button == "RightButton" then return ns.Button.Say("thirsty") end
+function SoThirsty_OnAddonCompartmentClick(_, mouse, menuButton)
+  if ns.MinimapClick then return ns.MinimapClick(mouse, menuButton) end
   openOptions()
 end
 function SoThirsty_OnAddonCompartmentEnter(_, menuButton)
@@ -239,6 +243,7 @@ events:SetScript("OnEvent", function(self, event, name)
     if ns.Curves then ns.Curves.Rebuild() end
     ns.Combat.Start()
     ns.Roster.Start()
+    if ns.SetupMinimap then ns.SetupMinimap() end
     if ns.RegisterOptions then pcall(ns.RegisterOptions) end
     if not SoThirstyDB.welcomed then
       SoThirstyDB.welcomed = true

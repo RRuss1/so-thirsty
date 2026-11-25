@@ -18,6 +18,7 @@ ns.L = {
     "  /sot move | lock: unlock or lock the drink button and the meter so you can drag them",
     "  /sot test: play the preview (nothing is posted to chat)",
     "  /sot ghost 25: how strongly the faint waterskin shows behind windows (0 = off)",
+    "  /sot minimap: show or hide the minimap button",
     "  /sot debug: print what the game tells the addon (for bug reports)",
     "  /sot debug party | frames | drink | icons: in-game checks for the glow, unit frames, drink buffs and icons",
     "  /sot debug mana | curve | swatch | events | window: the older checks",
@@ -203,7 +204,29 @@ ns.L = {
   SAMPLE_CHECK = "A Blizzard check box, for scale",
 
   -- compartment tooltip
-  TIP_CLICK = "Click: options. Right-click: I need a drink.",
+  TIP_CLICK = "Click: options. Right-click: menu.",
+
+  -- minimap button and its menu
+  MINIMAP_TIP = { "Left-click: options", "Right-click: menu of commands", "Drag: move this button" },
+  MINIMAP_HIDDEN = "Minimap button hidden. /sot minimap brings it back.",
+  MINIMAP_SHOWN = "Minimap button shown.",
+  OPT_MINIMAP = "Minimap button (/sot minimap brings it back)",
+  M_OPTIONS = "Options",
+  M_DRINK = "I need a drink",
+  M_READY = "Good to go",
+  M_ENABLED = "So Thirsty is on",
+  M_METER = "Thirst meter",
+  M_UNLOCK = "Unlock the button and meter to move them",
+  M_TEST = "Play the preview",
+  M_STATUS = "Healer status",
+  M_HELP = "Command list",
+  M_HIDE = "Hide minimap button",
+  M_DEBUG = "Debug",
+  M_DEBUG_INFO = "Debug info",
+  M_DEBUG_PARTY = "Check the glow on group members",
+  M_DEBUG_FRAMES = "Check unit frames",
+  M_DEBUG_DRINK = "Check drink buffs",
+  M_DEBUG_ICONS = "Check icons",
   TIP_NO_HEALERS = "No healers being watched.",
 
   -- Drink buffs, matched by name on each healer (spec 6.4). Add more as /sot debug drink finds them.
