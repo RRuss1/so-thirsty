@@ -35,6 +35,7 @@ Every level, color, chat channel and sound will be adjustable in the Options win
 | `/sot ghost 25` | How strongly the faint waterskin shows behind windows (0 = off) |
 | `/sot debug` | What the game tells the addon (paste this into bug reports) |
 | `/sot debug mana` | Every way the game offers to read mana, and which ones it hides |
+| `/sot debug curve` | Whether hidden mana can still drive a color or a fade |
 | `/sot debug drink` | Each healer's buffs and whether they count as drinking |
 | `/sot debug events` | Print role and combat events live (toggle) |
 | `/sot debug window` | Open a sample window |
