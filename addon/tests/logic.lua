@@ -292,11 +292,23 @@ do
   check("  and a Ready that would sit under the default level 1", bad.ready == nil)
 end
 
+do
+  local old = { look = { style = "glow", alpha = 80, faint = 35, rest = 70 } }
+  eq("ToTint moves the old default look", Levels.ToTint(old), true)
+  check("  to a 45% whole-frame tint", old.look.style == "tint" and old.look.alpha == 45 and old.look.faint == 50 and old.look.rest == 80)
+  local chosen = { look = { style = "border", alpha = 80, faint = 35, rest = 70 } }
+  eq("ToTint leaves a chosen style alone", Levels.ToTint(chosen), false)
+  eq("  unchanged", chosen.look.style, "border")
+  local tuned = { look = { style = "glow", alpha = 60 } }
+  eq("ToTint leaves a tuned glow alone", Levels.ToTint(tuned), false)
+end
+
 -- ---------------------------------------------------------------- settings
 
 do
   local s = SoThirstyDB.settings
-  eq("defaults: version 2", SoThirstyDB.version, 2)
+  eq("defaults: version 3", SoThirstyDB.version, 3)
+  check("defaults: whole-frame tint, 45% at most", s.look.style == "tint" and s.look.alpha == 45)
   check("defaults: 50/30/10, Ready 90", s.levels[1].pct == 50 and s.levels[3].pct == 10 and s.ready.pct == 90)
   eq("defaults: nudge 5 s after a fight", s.nudgeDelay, 5)
   check("defaults validate", Levels.Validate(s.levels, s.ready))

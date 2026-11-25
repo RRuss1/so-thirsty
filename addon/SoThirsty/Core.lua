@@ -3,7 +3,7 @@ local addonName, ns = ...
 local L = ns.L
 
 -- Spec 12.1 (design v2). Account-wide.
-local DB_VERSION = 2
+local DB_VERSION = 3
 local DB_DEFAULTS = {
   settings = {
     enabled = true,
@@ -21,12 +21,12 @@ local DB_DEFAULTS = {
     look = {
       palette = "classic",          -- "classic" | "water" | "colorblind" | "custom"
       bands = "smooth",             -- "smooth" | "steps"
-      strength = true, alpha = 80, faint = 35,
-      rest = 70,                    -- resting brightness; the nudge lifts it to 100 for a moment
+      strength = true, alpha = 45, faint = 50,   -- alpha: the strongest tint, 45% at most by default
+      rest = 80,                    -- resting brightness; the nudge lifts it to 100 for a moment
       drinkDim = 35,
       combat = "hide",              -- "hide" | "faint"
       pulse = true, pulseSpeed = "normal",
-      style = "glow",               -- "glow" | "border" | "corners" | "tint" | "bar"
+      style = "tint",               -- "tint" (whole frame) | "glow" | "border" | "corners" | "bar"
       thickness = 2,
       icon = "drop",
       drinkColor = { 0.31, 0.76, 0.97, 1 },
@@ -264,7 +264,9 @@ events:SetScript("OnEvent", function(self, event, name)
   if event == "ADDON_LOADED" and name == addonName then
     local db = SoThirstyDB or {}
     -- Design v1 kept an output grid, sounds and a banner; v2 keeps levels, colors and look.
-    if db.settings and db.version ~= DB_VERSION then db.settings = ns.Levels.Migrate(db.settings) end
+    if db.settings and (db.version or 1) < 2 then db.settings = ns.Levels.Migrate(db.settings) end
+    -- v3: the edge glow hid under aggro borders, so the default became a whole-frame tint.
+    if db.settings and db.version == 2 then ns.Levels.ToTint(db.settings) end
     db.version = DB_VERSION
     SoThirstyDB = applyDefaults(db, DB_DEFAULTS)
     if ns.Curves then ns.Curves.Rebuild() end

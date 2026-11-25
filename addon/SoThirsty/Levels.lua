@@ -174,3 +174,14 @@ function Levels.Migrate(old)
   end
   return new
 end
+
+-- Settings v2 -> v3: anyone still on the old default look (edge glow at 80%) moves to the
+-- whole-frame tint at 45%. A look the player chose themselves is left alone.
+function Levels.ToTint(settings)
+  local look = settings.look
+  if type(look) ~= "table" or look.style ~= "glow" or look.alpha ~= 80 then return false end
+  look.style, look.alpha = "tint", 45
+  if look.faint == 35 then look.faint = 50 end
+  if look.rest == 70 then look.rest = 80 end
+  return true
+end

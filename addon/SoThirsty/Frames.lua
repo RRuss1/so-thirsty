@@ -109,17 +109,61 @@ local STYLE = {
 
 -- ---------------------------------------------------------------- building a holder
 
-local function scaleAnim(group, order, from, to, seconds)
-  local s = group:CreateAnimation("Scale")
-  s:SetOrder(order)
-  s:SetDuration(seconds)
-  if s.SetScaleFrom then
-    s:SetScaleFrom(from, from)
-    s:SetScaleTo(to, to)
-  else
-    s:SetScale(to / from, to / from)
+-- Motion (the pulse and the nudge) is driven by one shared timer that sets plain alpha on
+-- our own frames. Not AnimationGroups: an Alpha animation on a parent OVERRIDES its child
+-- textures' alpha instead of multiplying with it, so the mana-driven alpha was lost and the
+-- glow showed at full mana (found in game). A frame's own SetAlpha multiplies correctly.
+-- The timer only runs while something is moving.
+local PULSE_MAX = 0.3            -- the pulse adds at most this much on top of the tint
+local NUDGE_UP, NUDGE_DOWN = 0.35, 0.6
+local STEP = 0.05
+local moving = {}                -- holders with a pulse or nudge running
+local ticker
+local clock = 0
+
+local function tick()
+  clock = clock + STEP
+  local any = false
+  for holder in pairs(moving) do
+    local keep = false
+    local visible = holder:IsShown() and holder.baseAlpha > 0
+    if holder.pulseOn and visible then
+      local x = (clock % (2 * holder.pulsePeriod)) / holder.pulsePeriod -- 0..2
+      if x > 1 then x = 2 - x end
+      holder.pulse:SetAlpha(PULSE_MAX * x)
+      keep = true
+    end
+    if holder.nudgeAt then
+      local t = clock - holder.nudgeAt
+      local k
+      if not visible then
+        k = nil
+      elseif t < NUDGE_UP then
+        k = t / NUDGE_UP
+      elseif t < NUDGE_UP + holder.nudgeHold then
+        k = 1
+      elseif t < NUDGE_UP + holder.nudgeHold + NUDGE_DOWN then
+        k = 1 - (t - NUDGE_UP - holder.nudgeHold) / NUDGE_DOWN
+      end
+      if k then
+        holder.body:SetAlpha(holder.baseAlpha + (1 - holder.baseAlpha) * k)
+        keep = true
+      else
+        holder.nudgeAt = nil
+        holder.body:SetAlpha(holder.baseAlpha)
+      end
+    end
+    if keep then any = true else moving[holder] = nil end
   end
-  return s
+  if not any and ticker then
+    ticker:Cancel()
+    ticker = nil
+  end
+end
+
+local function move(holder)
+  moving[holder] = true
+  if not ticker then ticker = C_Timer.NewTicker(STEP, tick) end
 end
 
 -- Adds the layers to a holder. Also used for the Options preview frame.
@@ -132,19 +176,15 @@ function Frames.Build(holder)
   glow:SetAllPoints()
   holder.glow, holder.styles, holder.pieces = glow, {}, {}
 
-  -- Pulse: an outer edge in the level 3 color. The game decides whether it's visible
-  -- (below level 3); our animation just breathes.
+  -- Pulse: a wash of the level 3 color over the whole frame. The game decides whether its
+  -- texture is visible (below level 3); the shared timer breathes the frame's alpha.
   local pulse = CreateFrame("Frame", nil, body)
   pulse:SetAllPoints()
+  pulse:SetAlpha(0)
   pulse.pieces = {}
-  edgeInto(pulse, pulse.pieces, 2, 0)
-  pulse.anim = pulse:CreateAnimationGroup()
-  pulse.anim:SetLooping("BOUNCE")
-  pulse.fade = pulse.anim:CreateAnimation("Alpha")
-  pulse.fade:SetFromAlpha(1)
-  pulse.fade:SetToAlpha(0.15)
-  pulse.fade:SetSmoothing("IN_OUT")
+  piece(pulse, pulse.pieces):SetAllPoints()
   holder.pulse = pulse
+  holder.baseAlpha = 0
 
   local tick = CreateFrame("Frame", nil, body)
   tick:SetSize(16, 16)
@@ -166,20 +206,6 @@ function Frames.Build(holder)
   edgeInto(holder, holder.grey, 1, 0)
   for _, t in ipairs(holder.grey) do t:Hide() end
 
-  -- The nudge: brighten and swell, hold, ease back.
-  local n = body:CreateAnimationGroup()
-  n.up = n:CreateAnimation("Alpha")
-  n.up:SetOrder(1)
-  n.up:SetDuration(0.35)
-  n.up:SetToAlpha(1)
-  scaleAnim(n, 1, 1, 1.08, 0.35)
-  n.down = n:CreateAnimation("Alpha")
-  n.down:SetOrder(2)
-  n.down:SetDuration(0.6)
-  n.down:SetFromAlpha(1)
-  n.shrink = scaleAnim(n, 2, 1.08, 1, 0.6)
-  body.nudge = n
-
   Frames.Style(holder)
 end
 
@@ -187,8 +213,8 @@ end
 function Frames.Style(holder)
   local cfg = ns.Settings()
   local look = cfg.look
-  local build = STYLE[look.style] or STYLE.glow
-  local key = (STYLE[look.style] and look.style or "glow") .. look.thickness
+  local build = STYLE[look.style] or STYLE.tint
+  local key = (STYLE[look.style] and look.style or "tint") .. look.thickness
   if not holder.styles[key] then
     holder.styles[key] = {}
     build(holder.glow, holder.styles[key], look)
@@ -197,14 +223,15 @@ function Frames.Style(holder)
     for _, t in ipairs(list) do t:SetShown(k == key) end
   end
   holder.pieces = holder.styles[key]
-  holder.glowAlpha = look.style == "tint" and 0.45 or 1
-  holder.glow:SetAlpha(holder.glowAlpha)
+  holder.glowAlpha = 1
+  holder.glow:SetAlpha(1)
 
   local c3 = cfg.levels[3].color
   for _, t in ipairs(holder.pulse.pieces) do t:SetVertexColor(c3[1], c3[2], c3[3]) end
-  holder.pulse.fade:SetDuration(Theme.PULSE_SECONDS[look.pulseSpeed] or 1)
-  holder.pulse:SetShown(look.pulse)
-  if look.pulse then holder.pulse.anim:Play() else holder.pulse.anim:Stop() end
+  holder.pulseOn = look.pulse and true or false
+  holder.pulsePeriod = Theme.PULSE_SECONDS[look.pulseSpeed] or 1
+  holder.pulse:SetShown(holder.pulseOn)
+  if holder.pulseOn then move(holder) end
 
   holder.drop:SetTexture(Theme.ICONS[look.icon] or Theme.ICONS.drop)
   local g = look.greyColor
@@ -226,22 +253,20 @@ end
 
 -- The known-state layers: overall brightness, the drinking drop, the grey edge.
 function Frames.SetKnown(holder, alpha, grey, drinking)
-  holder.body:SetAlpha(alpha)
+  holder.baseAlpha = alpha
+  -- A running nudge owns the body's alpha; the timer puts it back to baseAlpha when done.
+  if not holder.nudgeAt then holder.body:SetAlpha(alpha) end
+  if holder.pulseOn and alpha > 0 then move(holder) end
   holder.drop:SetShown(drinking and ns.Settings().frames.drop)
   for _, t in ipairs(holder.grey) do t:SetShown(grey) end
 end
 
--- Plays the nudge on a holder (spec 7).
+-- Plays the nudge on a holder (spec 7): brighten, hold, ease back. No size change.
 function Frames.PlayNudge(holder)
   local cfg = ns.Settings()
-  local n = holder.body.nudge
-  local rest = cfg.look.rest / 100
-  n.up:SetFromAlpha(rest)
-  n.down:SetToAlpha(rest)
-  n.down:SetStartDelay(cfg.nudgeHold)
-  n.shrink:SetStartDelay(cfg.nudgeHold)
-  n:Stop()
-  n:Play()
+  holder.nudgeAt = clock
+  holder.nudgeHold = cfg.nudgeHold
+  move(holder)
   if cfg.frames.readyTick then
     holder.tick:Show()
     C_Timer.After(cfg.nudgeHold + 1, function() holder.tick:Hide() end)

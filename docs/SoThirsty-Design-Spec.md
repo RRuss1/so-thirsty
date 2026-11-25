@@ -181,7 +181,7 @@ No WoW API calls. Numbers, booleans and tables in; plain tables out. `Curves.lua
   2. Dead or offline → alpha 0, grey (a faint grey edge replaces the glow).
   3. In combat → alpha 0, or 0.15 when `look.combat = "faint"`.
   4. Drinking → alpha `look.drinkDim` (default 35%), drinking.
-  5. Otherwise → alpha `look.rest` (default 70%): the resting brightness. The nudge lifts it to 100% for a moment.
+  5. Otherwise → alpha `look.rest` (default 80%): the resting brightness. The nudge lifts it to 100% for a moment.
 - **`Levels.CanNudge(known, wiped)`** → true only when enabled, zone ok, out of combat, not dead/offline, not drinking and not wiped.
 - **`Levels.ButtonAllowed(now, log, cfg)`** → `true`, or `false` plus `"COOLDOWN"` / `"CAP"`. `log` is the list of the player's recent send times. 15 s between lines; 3 lines per 300 s.
 
@@ -222,7 +222,7 @@ The final picture is **holder alpha (known) × texture alpha (secret, from the s
 
 **The nudge** (when the timer fires, once per fight):
 
-- For each healer where `Levels.CanNudge` is true, play the nudge animation on that healer's holder: brighten and swell slightly for `nudgeHold` (default 3 s), then ease back. `AnimationGroup` only.
+- For each healer where `Levels.CanNudge` is true, play the nudge on that healer's holder: brighten for `nudgeHold` (default 3 s), then ease back. No size change.
 - A healer above level 1 has a glow alpha of 0 from the curve, so their nudge is invisible. The addon doesn't need to know who is low.
 - If `frames.readyTick` is on, the ready tick layer is shown for the same few seconds (visible only at or above Ready, by its curve).
 - `settings.nudge = false` turns the nudge off; the steady glow stays.
@@ -240,7 +240,7 @@ For each tracked healer, one **holder**: our own plain, non-secure `Frame`, `Set
 | Layer | Driven by | Shows |
 |---|---|---|
 | **Glow** | color curve + strength curve (secret) | the thirst color, stronger as mana falls |
-| **Pulse** | pulse step curve (secret) + a looping alpha animation on its sub-frame | a slow pulse below level 3 only |
+| **Pulse** | pulse step curve (secret) + the shared motion timer on its sub-frame | a slow wash of the level 3 color over the frame, below level 3 only |
 | **Ready tick** (option, off) | ready step curve (secret) | a small green mark at or above Ready, during the nudge |
 | **Drop icon** | known: drinking | a water drop while drinking |
 | **Grey edge** | known: dead / offline | a faint grey edge instead of the glow |
@@ -248,6 +248,7 @@ For each tracked healer, one **holder**: our own plain, non-secure `Frame`, `Set
 
 - **Refresh:** on `UNIT_POWER_UPDATE` for a tracked healer (mana type only), re-apply the curves: `tex:SetVertexColor(color:GetRGB())`, `tex:SetAlpha(alpha)`. Coalesce to one refresh per healer per 0.5 s. Also refresh on roster changes and when combat ends.
 - **Holder alpha** comes from `Levels.Holder` and is set on the holder frame. Never mix it with secret values in Lua.
+- **Motion uses one shared `C_Timer` ticker, not AnimationGroups.** Found in game: an Alpha animation on a parent frame overrides its child textures' alpha instead of multiplying with it, so the mana-driven alpha was lost and the glow showed at full mana. A frame's own `SetAlpha` multiplies correctly. The ticker (20 steps a second) sets plain alpha on our frames for the pulse and the nudge, and runs only while a visible holder has one going. No Scale animations either: they pushed the glow outside the frame.
 - **Blizzard frames to support (v1):** compact party frames, compact raid frames, and the classic party frames (or Forever's equivalent; confirm with `/sot debug frames`, Q8).
 - **Finding frames:** walk the known containers and match `frame.unit` / `frame.displayedUnit` against the healer's unit with `UnitIsUnit`. Re-map on roster updates. Never replace Blizzard functions.
 - **Taint safety:**
@@ -315,16 +316,16 @@ One-click **feel presets** set the motion options (colors are left alone):
 
 **Highlight style** (`look.style`):
 
-- `"glow"` (default): a soft glow just inside the frame edge, using the `glow-*.tga` textures (they are drawn to grow inward).
+- `"tint"` (default): a translucent color over the whole unit frame, **45% opacity at most** by default. Chosen after testing in game: the game's aggro and selection borders draw over a frame's edges, so edge styles get hidden exactly when they matter.
+- `"glow"`: a soft glow just inside the frame edge, using the `glow-*.tga` textures (they are drawn to grow inward).
 - `"border"`: solid border, thickness 1–4 px (`look.thickness`, default 2).
-- `"corners"`: four small corner brackets. The least intrusive option.
-- `"tint"`: a translucent fill over the whole frame.
+- `"corners"`: four small corner brackets.
 - `"bar"`: a colored strip over the frame's mana bar area only.
 
 **Other look settings:**
 
 - **Bands:** smooth (default) or steps (6.1).
-- **Strength ramp** on/off (`look.strength`), top opacity 20–100% (`look.alpha`, default 80), faint end (`look.faint`), resting brightness (`look.rest`, default 70).
+- **Strength ramp** on/off (`look.strength`), top opacity 10–100% (`look.alpha`, default **45**), faint end (`look.faint`, default 50), resting brightness (`look.rest`, default 80).
 - **Drinking dim** 10–100% (`look.drinkDim`, default 35) and the drop icon on/off.
 - **In combat:** hidden (default) or faint (`look.combat`).
 - **Pulse:** off / below level 3 (default); speed slow / normal / fast.
@@ -399,7 +400,7 @@ The glow, the meter and the drink button all follow these rules.
 
 ```lua
 local DB_DEFAULTS = {
-  version = 2,
+  version = 3,
   settings = {
     enabled = true,
     levels = {
@@ -415,12 +416,12 @@ local DB_DEFAULTS = {
     look = {
       palette = "classic",          -- "classic" | "water" | "colorblind" | "custom"
       bands = "smooth",             -- "smooth" | "steps"
-      strength = true, alpha = 80, faint = 35,
-      rest = 70,                    -- resting brightness; the nudge lifts it to 100
+      strength = true, alpha = 45, faint = 50,
+      rest = 80,                    -- resting brightness; the nudge lifts it to 100
       drinkDim = 35,
       combat = "hide",              -- "hide" | "faint"
       pulse = true, pulseSpeed = "normal",
-      style = "glow",               -- "glow" | "border" | "corners" | "tint" | "bar"
+      style = "tint",               -- "tint" | "glow" | "border" | "corners" | "bar"
       thickness = 2,
       icon = "drop",
       greyColor = { 0.6, 0.6, 0.6, 0.6 },
@@ -488,7 +489,7 @@ The addon's own window via `ns.CreateWindow`, plus an entry under Esc > Options 
   - Curves are built once and rebuilt only when a level, color or look setting changes.
   - Unregister unit events when solo, in a disabled zone, or when no healer is assigned.
 - **Memory:** no per-refresh tables in hot paths. Reuse holders and curves.
-- **No** `OnUpdate` scripts, with one exception: the minimap button sets one while it is being dragged and removes it on release. Timers use `C_Timer`; motion uses `AnimationGroup`.
+- **No** `OnUpdate` scripts, with one exception: the minimap button sets one while it is being dragged and removes it on release. Timers and motion use `C_Timer` (see 8.1 for why not `AnimationGroup` over mana-driven textures).
 - **Secrets:** never compare, branch on or do math with a secret. Guard every read with `ns.IsSecret`. Pass secrets only to `SetAlpha`, `SetVertexColor`, `SetValue`, `SetAlphaFromBoolean` and the curve-taking APIs.
 - All player-facing text goes in `Locales/enUS.lua` (lines up to 200 characters).
 - `.luacheckrc`: list every WoW API used in `read_globals`, and keep that list accurate.
@@ -592,7 +593,7 @@ From `/sot debug party`, `/sot debug frames` and `/sot debug drink` (design v2 b
 - **Q8:** with raid-style party frames on, the frames are `CompactPartyFrameMember1..N`, the player included. Classic party frames still to check.
 - **Q11:** aura names and spell IDs are readable out of combat, for the player and for party members (their scans returned a clean `false`, not hidden). The drink buff is **"Drink", spell 1135** (Moonberry Juice).
 - **Q6:** `SendChatMessage` to PARTY works from a button click, out of combat, in the open world. Instances still to check.
-- **Q22** (pulse animation over a secret alpha) is still open: nobody was below level 3 during the test.
+- **Q22: no.** An Alpha `AnimationGroup` on a parent frame overrides its child textures' alpha (the nudge lit the glow at full mana, and the pulse edge showed above level 3). Motion now uses a shared timer and plain `SetAlpha` on our own frames (8.1).
 - Found in the same test: the glow art is drawn to grow inward, so an outward glow made its corner pieces cross. The glow now sits just inside the frame edge.
 
 ---

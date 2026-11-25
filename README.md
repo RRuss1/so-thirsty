@@ -2,7 +2,7 @@
 
 A lightweight addon for **WoW: Forever** that shows when your **healer is low on mana**, so the tank waits for them to drink before the next pull.
 
-- **A glow on the healer's frame.** Below 50% mana their party/raid frame glows yellow, turning orange and then red as mana falls, in 10% bands.
+- **A color on the healer's frame.** Below 50% mana their party/raid frame is tinted yellow, turning orange and then red as mana falls, in 10% bands. The tint covers the whole frame at 45% opacity at most, so it shows even under aggro borders.
 - **Silent.** It never posts to chat or plays a sound on its own.
 - **Out of combat.** The glow hides during fights and gives one short nudge 5 seconds after a fight ends.
 - **Drinking shows.** A healer who is drinking gets a dimmed glow and a drink icon.

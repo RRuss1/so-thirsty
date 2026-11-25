@@ -112,9 +112,9 @@ ns.L = {
   OPT_RESET = "Reset",
 
   -- options: look
-  OPT_GLOW = "The glow",
+  OPT_GLOW = "The color on the frame",
   OPT_STYLE = "Style",
-  STYLES = { glow = "Soft glow", border = "Border", corners = "Corners", tint = "Tint", bar = "Bar strip" },
+  STYLES = { tint = "Whole frame tint", glow = "Soft inner glow", border = "Border", corners = "Corners", bar = "Bar strip" },
   OPT_THICKNESS = "Line thickness (border, corners)",
   OPT_ALPHA = "Strongest opacity",
   OPT_STRENGTH = "Grow stronger as mana falls",
@@ -139,7 +139,7 @@ ns.L = {
   OPT_NUDGE_HOLD = "How long it stays bright",
   OPT_WIPE = "No nudge after a wipe",
   OPT_PULSE_HEAD = "Pulse",
-  OPT_PULSE = "Slow pulse below level 3",
+  OPT_PULSE = "Slow pulse over the frame below level 3",
   OPT_PULSE_SPEED = "Pulse speed",
   SPEEDS = { slow = "Slow", normal = "Normal", fast = "Fast" },
   OPT_EXTRAS = "Extras",

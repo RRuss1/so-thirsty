@@ -12,7 +12,7 @@ ns.Theme = {
     water = { { 0.61, 0.91, 1, 1 }, { 0.31, 0.76, 0.97, 1 }, { 0.48, 0.31, 0.97, 1 }, ready = { 1, 1, 1, 1 } },
     colorblind = { { 0.94, 0.89, 0.26, 1 }, { 0.9, 0.62, 0, 1 }, { 0.8, 0.47, 0.65, 1 }, ready = { 0.34, 0.71, 0.91, 1 } },
   },
-  STYLES = { "glow", "border", "corners", "tint", "bar" },
+  STYLES = { "tint", "glow", "border", "corners", "bar" },
   PULSE_SECONDS = { slow = 1.6, normal = 1.0, fast = 0.6 },
   PULSE_ORDER = { "slow", "normal", "fast" },
   -- Game icons (spec 9.7); /sot debug icons shows them.

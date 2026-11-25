@@ -16,6 +16,8 @@ In-game tests showed that Forever always hides mana from addons, so the first de
 - The thirst meter and the drink button can be dragged any time.
 - Options window: **Save** and **Undo changes**. Changes preview at once but only stick on Save; closing without Save undoes them.
 - Window background: the logo in black and white, filling the whole panel.
+- **Default look is now a whole-frame tint, 45% opacity at most.** Edge glows were hidden by the game's aggro borders. The other styles are still on the Look tab.
+- Fixed: the nudge lit the glow at full mana and drew lines past the frame corners; the pulse edge showed above level 3. Fade animations override a texture's own transparency, so motion now uses a timer.
 - First group test: curves, range fade, meter bars and drink buffs all work on party members (spec 16 Q20-Q24). Fixed the glow, whose corner pieces crossed outside the frame.
 - New checks: `/sot debug party`, `/sot debug frames`, `/sot debug icons`.
 - Removed: automatic chat lines, sounds, the on-screen banner, the poster election and addon messages. They all needed the mana number.

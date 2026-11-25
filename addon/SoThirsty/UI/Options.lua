@@ -288,7 +288,7 @@ local function tabList()
       { "head", L.OPT_GLOW },
       cycle(L.OPT_STYLE, look, "style", Theme.STYLES, L.STYLES),
       step(L.OPT_THICKNESS, look, "thickness", 1, 4, 1, " px"),
-      step(L.OPT_ALPHA, look, "alpha", 20, 100, 10, "%"),
+      step(L.OPT_ALPHA, look, "alpha", 10, 100, 5, "%"),
       check(L.OPT_STRENGTH, look, "strength"),
       step(L.OPT_FAINT, look, "faint", 10, 100, 5, "%"),
       step(L.OPT_REST, look, "rest", 30, 100, 10, "%"),
@@ -461,7 +461,7 @@ function ns.PlayPreview()
       preview.pct, preview.drinking = 100, false
     end
     preview.box:SetChecked(preview.drinking)
-    paintPreview()
+    ns.RefreshOptions() -- repaints the preview and keeps the mana stepper in step
     if tick == 13 then Frames.PlayNudge(preview.holder) end
   end, 28)
 end
