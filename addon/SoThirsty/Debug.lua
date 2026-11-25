@@ -216,6 +216,79 @@ function ns.DebugCurve()
   tex:Hide()
 end
 
+-- /sot debug swatch: a live preview of your own mana through curves (spec 16 Q19). The addon
+-- never sees the number; the game evaluates the curves. Spend mana and watch:
+--   color square: green at full, yellow at half, red at empty (moves only on a 0-1 scale)
+--   fade square:  appears below 90% mana (only on a 0-1 scale)
+local swatch
+
+local function colorCurve(points)
+  local c = C_CurveUtil.CreateColorCurve()
+  c:SetType(Enum.LuaCurveType.Linear)
+  for _, p in ipairs(points) do c:AddPoint(p[1], _G.CreateColor(p[2], p[3], p[4], 1)) end
+  return c
+end
+
+local function stepCurve(points)
+  local c = C_CurveUtil.CreateCurve()
+  c:SetType(Enum.LuaCurveType.Step)
+  for _, p in ipairs(points) do c:AddPoint(p[1], p[2]) end
+  return c
+end
+
+local function square(parent, x)
+  local t = parent:CreateTexture(nil, "ARTWORK")
+  t:SetColorTexture(1, 1, 1, 1)
+  t:SetSize(56, 56)
+  t:SetPoint("TOPLEFT", x, -20)
+  return t
+end
+
+local function buildSwatch()
+  local f = ns.CreateWindow("SoThirstySwatch", 360, 260, L.ADDON)
+  local c = f.content
+  local mt = manaType() or 0
+  local colors = colorCurve({ { 0, 1, 0.25, 0.25 }, { 0.5, 1, 0.85, 0.2 }, { 1, 0.4, 0.9, 0.3 } })
+  local fade = stepCurve({ { 0, 1 }, { 0.9, 0 } })
+  local colorSq, fadeSq = square(c, 24), square(c, 104)
+  local bar = CreateFrame("StatusBar", nil, c)
+  bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  bar:SetStatusBarColor(0.31, 0.76, 0.97)
+  bar:SetSize(150, 14)
+  bar:SetPoint("TOPLEFT", 184, -40)
+  local help = ns.Text(c, "body", 12)
+  help:SetPoint("TOPLEFT", 16, -92)
+  help:SetPoint("RIGHT", -16, 0)
+  help:SetWordWrap(true)
+  help:SetText(L.SWATCH_HELP)
+
+  local function refresh()
+    local okC, col = pcall(_G.UnitPowerPercent, "player", mt, false, colors)
+    if okC and col then colorSq:SetVertexColor(col:GetRGB()) end
+    local okF, a = pcall(_G.UnitPowerPercent, "player", mt, false, fade)
+    if okF and a ~= nil then fadeSq:SetAlpha(a) end
+    bar:SetMinMaxValues(0, UnitPowerMax("player", mt))
+    bar:SetValue(UnitPower("player", mt))
+  end
+
+  f:SetScript("OnEvent", refresh)
+  f:HookScript("OnShow", function(self)
+    self:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+    refresh()
+  end)
+  f:HookScript("OnHide", function(self) self:UnregisterAllEvents() end)
+  return f
+end
+
+function ns.DebugSwatch()
+  if not (C_CurveUtil and C_CurveUtil.CreateColorCurve and _G.UnitPowerPercent) then
+    return ns.Print(L.SWATCH_MISSING)
+  end
+  swatch = swatch or buildSwatch()
+  swatch:Hide()
+  swatch:Show()
+end
+
 -- /sot debug window: opens a sample window, to check the look and that the game textures it
 -- borrows exist on Forever (spec 16 Q16).
 local sample

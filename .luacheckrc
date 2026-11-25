@@ -26,5 +26,5 @@ read_globals = {
   "UnitIsGroupLeader", "UnitAura", "C_UnitAuras", "issecretvalue", "Enum", "UnitHealth", "UnitHealthMax",
   -- group, world & client
   "IsInGroup", "IsInRaid", "IsInInstance", "LE_PARTY_CATEGORY_INSTANCE", "InCombatLockdown",
-  "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer",
+  "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer", "C_CurveUtil",
 }

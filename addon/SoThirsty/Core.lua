@@ -126,6 +126,7 @@ local COMMANDS = {
     if rest == "window" then return ns.DebugWindow() end
     if rest == "mana" then return ns.DebugMana() end
     if rest == "curve" then return ns.DebugCurve() end
+    if rest == "swatch" then return ns.DebugSwatch() end
     if rest == "events" then
       local s = ns.Settings()
       s.debugEvents = not s.debugEvents

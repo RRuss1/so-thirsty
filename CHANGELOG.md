@@ -9,7 +9,8 @@
 - `/sot levels 50 30 10` sets the three levels (rejects a bad order).
 - Nothing is announced yet. Warnings come in Phase 3.
 - `/sot debug mana`: first in-game test showed mana is a secret value even out of combat, so this probes every official way to read it (spec 16 Q17). Answer: none; mana is always secret on Forever.
-- `/sot debug curve`: tests whether a curve can turn hidden mana into a color or a fade (spec 16 Q18).
+- `/sot debug curve`: tests whether a curve can turn hidden mana into a color or a fade (spec 16 Q18). Answer: yes.
+- `/sot debug swatch`: a live color and fade preview of your own mana, to settle the curve scale (spec 16 Q19).
 
 ## v0.1.0 — Skeleton (unreleased)
 

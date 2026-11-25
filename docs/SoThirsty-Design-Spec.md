@@ -684,6 +684,7 @@ Answer each with a `/sot debug` subcommand in game. Record the answers here.
 17. **Blocker.** With `UnitPower` secret, is there any official, readable mana source (`UnitPowerPercent`, a `C_Secrets` predicate, a different argument)? Can a `StatusBar` take a secret mana value? Test with `/sot debug mana`. If nothing is readable, mana thresholds and chat lines can't work as designed, and the design has to change. Don't work around a secret (e.g. measuring bar texture widths): that defeats a deliberate Blizzard restriction.
 
 18. Can a `C_CurveUtil` curve turn the secret mana percent into an alpha or a color that our own textures accept (`UnitPowerPercent(unit, Mana, false, curve)`, `SetAlpha`, `SetVertexColor`)? Is the percent on a 0–1 or 0–100 scale? Test with `/sot debug curve`. This is the only way left to show mana levels (see Q17 answer).
+19. What scale does `UnitPowerPercent` feed a curve (0–1 or 0–100)? Does a curve-driven color/fade update live on `UNIT_POWER_UPDATE`? Test with `/sot debug swatch` while spending mana.
 
 ### Answers so far
 
@@ -701,6 +702,15 @@ From `/sot debug mana`, same client, open world, out of combat:
 - **Q17: no readable mana source exists.** `UnitPower` (every argument form) and `UnitPowerPercent` are secret for the player and for party members. `C_Secrets.ShouldUnitPowerBeSecret` returns `true` for both, and `C_Secrets.GetPowerTypeSecrecy(Mana)` returns `2`. This is policy, not a bug: the addon can never know a healer's mana number. Comparisons against levels, chat lines, sounds and the state machine in 6.2 can't run on real mana.
 - `UnitPowerMax` is readable for the player only (`ShouldUnitPowerMaxBeSecret` false); secret for party members. `UnitHealth` is secret too.
 - A `StatusBar` accepts a secret mana value (`GetValue` stays secret). Present: `C_CurveUtil`, `CurveConstants`, `C_Secrets`, `C_RestrictedActions`, `canaccesssecrets`, `hasanysecretvalues`, `issecrettable`, `scrubsecretvalues`, `secretwrap`, `dropsecretaccess`. Leads to Q18.
+
+From `/sot debug curve`, same client, out of combat:
+
+- **Q18: yes, the visual path works.** `C_CurveUtil` has `CreateCurve`, `CreateColorCurve`, `EvaluateColorFromBoolean`, `EvaluateColorValueFromBoolean`, `EvaluateGameCurve`. `Enum.LuaCurveType`: Linear 0, Step 1, Cosine 2, Cubic 3. `CurveConstants`: ZeroToOne, ScaleTo100, Reverse, ReverseTo100.
+  - `curve:Evaluate(secret)` is **blocked** for addon code ("only allowed during untainted execution"). Pass the curve to the API instead.
+  - `UnitPowerPercent(unit, Mana, false, curve)` returns a secret number; `Texture:SetAlpha` accepts it.
+  - `UnitPowerPercent(unit, Mana, false, colorCurve)` returns a color object whose `GetRGB()` is secret; `Texture:SetVertexColor` accepts it.
+  - Textures also have `SetAlphaFromBoolean` and `SetVertexColorFromBoolean`.
+  - Scale still open (Q19): the test ran at 100% mana.
 
 ---
 
