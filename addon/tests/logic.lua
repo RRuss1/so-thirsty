@@ -521,13 +521,13 @@ do
   local Button = ns.Button
   sent, printed = {}, {}
   eq("a click posts one line", Button.Say("thirsty"), true)
-  eq("  to party chat, with the tag", sent[1], "PARTY: [SoThirsty] Tanky needs a drink - hold the pull")
+  eq("  to party chat, with the tag", sent[1], "PARTY: [Thirsty] Tanky needs a drink - hold the pull")
   eq("a second click inside 15 s is refused", Button.Say("thirsty"), false)
   eq("  nothing more sent", #sent, 1)
   check("  and it says why", (printed[#printed] or ""):find("15 seconds") ~= nil)
   clock = clock + 31
   eq("after the cooldown: ready line", Button.Say("ready"), true)
-  eq("  the ready text", sent[2], "PARTY: [SoThirsty] Tanky is good to go")
+  eq("  the ready text", sent[2], "PARTY: [Thirsty] Tanky is good to go")
   clock = clock + 31
   eq("third line", Button.Say("thirsty"), true)
   clock = clock + 31

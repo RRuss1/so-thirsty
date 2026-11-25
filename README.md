@@ -37,8 +37,8 @@ Levels move in steps of 10. Colors, glow style, strength, the pulse, the nudge a
 
 A small button appears when your role is Healer and you're in a group.
 
-- **Left-click:** posts `[SoThirsty] <you> needs a drink - hold the pull`
-- **Right-click:** posts `[SoThirsty] <you> is good to go`
+- **Left-click:** posts `[Thirsty] <you> needs a drink - hold the pull`
+- **Right-click:** posts `[Thirsty] <you> is good to go`
 
 It posts to party, raid or instance chat, whichever your group uses. Limits: 15 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines. Drag the button to move it.
 

@@ -4,7 +4,7 @@ local _, ns = ...
 ns.L = {
   ADDON = "So Thirsty",
   PREFIX = "|cff4fc3f7So Thirsty:|r ",
-  CHAT_TAG = "[SoThirsty]",
+  CHAT_TAG = "[Thirsty]",
 
   -- slash
   HELP = {
@@ -153,7 +153,7 @@ ns.L = {
   BUTTON_SHOW = { healer = "When I'm the healer", always = "Whenever I'm grouped", never = "Never" },
   OPT_BUTTON_NOTE = "The only way So Thirsty posts to chat: one line per click. 15 seconds between lines, 3 per 5 minutes, never in combat.",
   OPT_CHANNELS = "Where a click may post",
-  OPT_PREFIX = "Start the line with [SoThirsty]",
+  OPT_PREFIX = "Start the line with [Thirsty]",
   OPT_LINES = "The lines ({name} is your name; empty = default)",
   OPT_LINE_THIRSTY = "Need a drink",
   OPT_LINE_READY = "Good to go",

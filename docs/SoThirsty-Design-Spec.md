@@ -270,7 +270,7 @@ The only thing that ever posts to chat, and only on a click.
 - **Lines** (editable; tokens `{name}`, `{class}`):
   - Thirsty: `{name} needs a drink - hold the pull`
   - Ready: `{name} is good to go`
-- Prefix `[SoThirsty]` (`button.prefix`, default on), so people know it came from an addon.
+- Prefix `[Thirsty]` (`button.prefix`, default on), so people know it came from an addon.
 - No mana number in the line: the addon doesn't have one.
 - **Keys:** `/sot macro` makes two ordinary macros (`/sot drink`, `/sot ready`) for action bar slots, out of combat, only if they do not exist yet. `Bindings.xml` also adds both lines under Key Bindings > AddOns. Either way the same rules and caps apply.
 
@@ -608,7 +608,7 @@ From `/sot debug party`, `/sot debug frames` and `/sot debug drink` (design v2 b
 
 **Ideas for v1.1+ (not promises):**
 
-- **Chat-line reaction:** when another player's `[SoThirsty]` drink line appears in group chat, addon users get a small local banner or sound. This is the one automatic alert that's still possible, because it reacts to a person's click, not to mana.
+- **Chat-line reaction:** when another player's `[Thirsty]` drink line appears in group chat, addon users get a small local banner or sound. This is the one automatic alert that's still possible, because it reacts to a person's click, not to mana.
 - A percent badge on the frame, if the game allows formatting a secret number into our own text.
 - Per-character profiles, and settings import/export strings.
 - Third-party frame support (ElvUI, Cell, Grid2, VuhDo).
