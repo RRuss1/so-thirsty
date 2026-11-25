@@ -141,6 +141,81 @@ function ns.DebugMana()
   probeBar(mt)
 end
 
+-- /sot debug curve: mana is always secret (spec 16 Q17), so can a curve turn it into a color
+-- or an alpha that our own textures accept, without the addon ever learning the number?
+-- This is the sanctioned Midnight path (spec 16 Q18). Every call is guarded.
+local function keys(t)
+  if type(t) ~= "table" then return "missing" end
+  local out = {}
+  for k, v in pairs(t) do
+    local tv = type(v)
+    out[#out + 1] = tostring(k) .. ((tv ~= "function" and tv ~= "table") and ("=" .. tostring(v)) or "")
+  end
+  table.sort(out)
+  return #out > 0 and table.concat(out, ", ") or "empty"
+end
+
+local function methods(obj)
+  local ok, mt = pcall(getmetatable, obj)
+  if not ok or type(mt) ~= "table" then return "hidden" end
+  return keys(type(mt.__index) == "table" and mt.__index or mt)
+end
+
+local function curveResult(label, mt, curve)
+  local ok, v = pcall(_G.UnitPowerPercent, "player", mt, false, curve)
+  if not ok then return line(label, "error: " .. tostring(v)) end
+  line(label, v, "secret: " .. tostring(ns.IsSecret(v)))
+  return v
+end
+
+local function probeCurve(cu, mt, tex)
+  local ok, curve = pcall(cu.CreateCurve)
+  line("C_CurveUtil.CreateCurve", ok and "ok" or ("error: " .. tostring(curve)))
+  if not ok or not curve then return end
+  line("curve methods", methods(curve))
+  local step = Enum and Enum.LuaCurveType and Enum.LuaCurveType.Step
+  if step then try("curve:SetType(Step)", curve.SetType, curve, step) end
+  -- 1 (show) below 50% mana, 0 (hide) at or above; tried on both 0-1 and 0-100 scales.
+  try("curve:AddPoint(0, 1)", curve.AddPoint, curve, 0, 1)
+  try("curve:AddPoint(0.5, 0)", curve.AddPoint, curve, 0.5, 0)
+  try("curve:AddPoint(50, 0)", curve.AddPoint, curve, 50, 0)
+  local okP, pct = pcall(_G.UnitPowerPercent, "player", mt)
+  if okP then try("curve:Evaluate(mana %)", curve.Evaluate, curve, pct) end
+  local a = curveResult("UnitPowerPercent(player, mana, false, curve)", mt, curve)
+  if a ~= nil then line("Texture:SetAlpha(curve result)", (pcall(tex.SetAlpha, tex, a))) end
+end
+
+local function probeColorCurve(cu, mt, tex)
+  if not cu.CreateColorCurve then return line("C_CurveUtil.CreateColorCurve", "missing") end
+  local ok, cc = pcall(cu.CreateColorCurve)
+  line("C_CurveUtil.CreateColorCurve", ok and "ok" or ("error: " .. tostring(cc)))
+  if not ok or not cc or not _G.CreateColor then return end
+  line("color curve methods", methods(cc))
+  try("colorCurve:AddPoint(0, red)", cc.AddPoint, cc, 0, _G.CreateColor(1, 0.25, 0.25, 1))
+  try("colorCurve:AddPoint(0.5, blue)", cc.AddPoint, cc, 0.5, _G.CreateColor(0.31, 0.76, 0.97, 1))
+  local col = curveResult("UnitPowerPercent(player, mana, false, colorCurve)", mt, cc)
+  if col == nil then return end
+  local okR, r, g, b = pcall(function() return col:GetRGB() end)
+  line("color:GetRGB()", okR and r or ("error: " .. tostring(r)))
+  if okR then line("Texture:SetVertexColor(secret rgb)", (pcall(tex.SetVertexColor, tex, r, g, b))) end
+end
+
+function ns.DebugCurve()
+  ns.Print(L.DEBUG_CURVE_HEADER)
+  local mt = manaType() or 0
+  local cu = _G.C_CurveUtil
+  line("C_CurveUtil", keys(cu))
+  line("CurveConstants", keys(_G.CurveConstants))
+  line("Enum.LuaCurveType", keys(Enum and Enum.LuaCurveType))
+  local tex = UIParent:CreateTexture()
+  line("Texture has SetAlphaFromBoolean / SetVertexColorFromBoolean",
+    tex.SetAlphaFromBoolean ~= nil, tex.SetVertexColorFromBoolean ~= nil)
+  if type(cu) ~= "table" then return end
+  probeCurve(cu, mt, tex)
+  probeColorCurve(cu, mt, tex)
+  tex:Hide()
+end
+
 -- /sot debug window: opens a sample window, to check the look and that the game textures it
 -- borrows exist on Forever (spec 16 Q16).
 local sample
