@@ -38,7 +38,8 @@ local function fire(event, ...)
   end
 end
 
-local timers, lastDelay = {}, nil
+local timers = {}
+local lastDelay
 C_Timer = {
   After = function(_, fn) timers[#timers + 1] = { fn = fn } end,
   NewTimer = function(seconds, fn)
