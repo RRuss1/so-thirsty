@@ -23,13 +23,18 @@ end
 local function build(spec, isColor)
   local curve = isColor and C_CurveUtil.CreateColorCurve() or C_CurveUtil.CreateCurve()
   curve:SetType(spec.type == "step" and Enum.LuaCurveType.Step or Enum.LuaCurveType.Linear)
-  for _, p in ipairs(spec.points) do
+  local function add(x, p)
     if isColor then
-      curve:AddPoint(p[1], createColor(p[2], p[3], p[4], 1))
+      curve:AddPoint(x, createColor(p[2], p[3], p[4], 1))
     else
-      curve:AddPoint(p[1], p[2])
+      curve:AddPoint(x, p[2])
     end
   end
+  for _, p in ipairs(spec.points) do add(p[1], p) end
+  -- Hold the last value up to full mana, so nothing depends on how the game treats
+  -- inputs past a curve's last point.
+  local last = spec.points[#spec.points]
+  if last[1] < 1 then add(1, last) end
   return curve
 end
 
