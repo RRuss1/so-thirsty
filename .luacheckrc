@@ -19,12 +19,14 @@ globals = {
 read_globals = {
   -- frames & UI
   "CreateFrame", "UIParent", "UISpecialFrames", "GameTooltip", "DEFAULT_CHAT_FRAME", "tinsert", "CLOSE",
-  "RAID_CLASS_COLORS",
+  "RAID_CLASS_COLORS", "ColorPickerFrame",
   -- units
   "UnitExists", "UnitGUID", "UnitName", "UnitClass", "UnitIsUnit", "UnitGroupRolesAssigned", "UnitIsDeadOrGhost",
   "UnitIsConnected", "UnitPower", "UnitPowerMax", "UnitPowerType", "UnitAffectingCombat", "UnitInRange",
   "UnitIsGroupLeader", "UnitAura", "C_UnitAuras", "issecretvalue", "Enum", "UnitHealth", "UnitHealthMax",
   -- group, world & client
   "IsInGroup", "IsInRaid", "IsInInstance", "LE_PARTY_CATEGORY_INSTANCE", "InCombatLockdown",
-  "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer", "C_CurveUtil",
+  "GetBuildInfo", "WOW_PROJECT_ID", "C_Timer", "C_CurveUtil", "GetTime",
+  -- chat (the drink button only, spec 8.2)
+  "C_ChatInfo", "SendChatMessage",
 }

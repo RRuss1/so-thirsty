@@ -38,26 +38,34 @@ local function fire(event, ...)
   end
 end
 
-local timers = {}
+local timers, lastDelay = {}, nil
 C_Timer = {
-  After = function(_, fn) timers[#timers + 1] = fn end,
-  NewTimer = function() return { Cancel = function() end } end,
+  After = function(_, fn) timers[#timers + 1] = { fn = fn } end,
+  NewTimer = function(seconds, fn)
+    lastDelay = seconds
+    local t = { fn = fn }
+    function t:Cancel() self.cancelled = true end
+    timers[#timers + 1] = t
+    return t
+  end,
 }
 local function runTimers()
   local batch = timers
   timers = {}
-  for _, fn in ipairs(batch) do fn() end
+  for _, t in ipairs(batch) do
+    if not t.cancelled then t.fn() end
+  end
 end
 
--- A party: me (a tank) and four others. Edit `units` to change the group.
-local units, combat, grouped, raid
+-- A party: me (a tank) and two others. Edit `units` to change the group.
+local units, combat, grouped, raid, zone
 local function reset()
   units = {
-    player = { guid = "Player-1", name = "Tanky", role = "TANK", class = "WARRIOR", mana = 0, max = 0 },
-    party1 = { guid = "Player-2", name = "Sherl", role = "HEALER", class = "PRIEST", mana = 1000, max = 1000 },
-    party2 = { guid = "Player-3", name = "Brann", role = "DAMAGER", class = "MAGE", mana = 500, max = 1000 },
+    player = { guid = "Player-1", name = "Tanky", role = "TANK", class = "WARRIOR" },
+    party1 = { guid = "Player-2", name = "Sherl", role = "HEALER", class = "PRIEST" },
+    party2 = { guid = "Player-3", name = "Brann", role = "DAMAGER", class = "MAGE" },
   }
-  combat, grouped, raid = false, true, false
+  combat, grouped, raid, zone = false, true, false, "party"
 end
 reset()
 local function u(unit) return units[unit] end
@@ -69,23 +77,32 @@ function UnitIsUnit(a, b) return u(a) ~= nil and u(a) == u(b) end
 function UnitGroupRolesAssigned(unit) return u(unit) and u(unit).role or "NONE" end
 function UnitIsDeadOrGhost(unit) return u(unit).dead == true end
 function UnitIsConnected(unit) return u(unit).offline ~= true end
-function UnitPower(unit) return u(unit).mana end
-function UnitPowerMax(unit) return u(unit).max end
-function UnitAffectingCombat() return combat end
+function UnitAffectingCombat(unit) return combat or (u(unit) ~= nil and u(unit).combat == true) end
+function UnitAura(unit, i)
+  if i == 1 and u(unit).drink then return "Drink" end
+end
 function UnitIsGroupLeader() return true end
 function InCombatLockdown() return combat end
 function IsInGroup() return grouped end
 function IsInRaid() return raid end
-function IsInInstance() return true, "party" end
+function IsInInstance() return zone ~= "none", zone end
+
+local clock, sent = 1000, {}
+function GetTime() return clock end
+function SendChatMessage(msg, channel) sent[#sent + 1] = channel .. ": " .. msg end
 
 loadAddon("Locales/enUS.lua")
 loadAddon("Core.lua")
+loadAddon("Theme.lua")
 loadAddon("Levels.lua")
 loadAddon("Roster.lua")
 loadAddon("Drink.lua")
+loadAddon("Combat.lua")
+loadAddon("Button.lua")
 fire("ADDON_LOADED", "SoThirsty")
 
 local Levels = ns.Levels
+local rosterFrame, combatFrame = frames[2], frames[3]
 
 -- ---------------------------------------------------------------- harness
 
@@ -95,163 +112,202 @@ local function check(name, ok, detail)
     passed = passed + 1
   else
     failed = failed + 1
-    print("FAIL  " .. name .. (detail and ("\n      " .. detail) or ""))
+    print("FAIL  " .. name .. (detail and ("\n      " .. tostring(detail)) or ""))
   end
 end
 local function eq(name, got, want)
   check(name, got == want, ("got %s, want %s"):format(tostring(got), tostring(want)))
 end
-
--- A fresh config like the defaults: 50/30/10, Ready 90, margin 5, drink rise 10.
-local function cfg(a, b, c)
-  return {
-    levels = { { enabled = true, pct = a or 50 }, { enabled = true, pct = b or 30 }, { enabled = true, pct = c or 10 } },
-    ready = { enabled = true, pct = 90 },
-    rearmMargin = 5,
-    drinkRise = 10,
-  }
+local function near(name, got, want)
+  local ok = type(got) == "number" and math.abs(got - want) < 1e-6
+  check(name, ok, ("got %s, want %s"):format(tostring(got), tostring(want)))
 end
 
--- Runs mana updates out of combat, then settles; returns the level announced (or nil).
-local function settleAt(state, pct, c, drinking)
-  Levels.Update(state, pct, false, c)
-  local d = Levels.Settle(state, pct, drinking or false, c)
-  return d and d.level
+-- A config like the defaults, with easy colors: yellow, orange, red.
+local function cfg(a, b, c, bands)
+  return {
+    levels = {
+      { pct = a or 50, color = { 1, 1, 0 } },
+      { pct = b or 30, color = { 1, 0.5, 0 } },
+      { pct = c or 10, color = { 1, 0, 0 } },
+    },
+    ready = { pct = 90 },
+    look = { bands = bands or "smooth", strength = true, alpha = 80, faint = 50, rest = 70, drinkDim = 35, combat = "hide" },
+  }
 end
 
 -- ---------------------------------------------------------------- Levels (spec 6.3)
 
 do
-  local c, s = cfg(), Levels.NewState()
-  eq("100 -> 49: L1", settleAt(s, 49, c), 1)
-  eq("  48: nothing more", settleAt(s, 48, c), nil)
-  eq("  47: nothing more", settleAt(s, 47, c), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  Levels.Update(s, 100, false, c)
-  eq("100 -> 29 in one step: only L2", settleAt(s, 29, c), 2)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  Levels.Update(s, 60, true, c)
-  eq("60 -> 8 in combat: no decision mid-fight", Levels.Update(s, 8, true, c), nil)
-  eq("  settle at 8: L3", (Levels.Settle(s, 8, false, c) or {}).level, 3)
-  eq("  and only once", Levels.Settle(s, 8, false, c), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  Levels.Update(s, 25, true, c)
-  eq("60 -> 25 in combat, drinks to 40 by settle: L1, not L2", (Levels.Settle(s, 40, false, c) or {}).level, 1)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  eq("29: L2", settleAt(s, 29, c), 2)
-  eq("  31 (inside the re-arm margin): nothing", settleAt(s, 31, c), nil)
-  eq("  29 again: no second L2", settleAt(s, 29, c), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  eq("29: L2", settleAt(s, 29, c), 2)
-  eq("  36 (past the margin): nothing", settleAt(s, 36, c), nil)
-  eq("  29 again: L2 fires again", settleAt(s, 29, c), 2)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  Levels.Update(s, 25, false, c)
-  eq("settle while drinking: nothing", Levels.Settle(s, 25, true, c), nil)
-  eq("  announced unchanged", s.announced, 0)
-  eq("  next settle, not drinking, still 25: L2", (Levels.Settle(s, 25, false, c) or {}).level, 2)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  eq("two settles with no change: first L2", settleAt(s, 25, c), 2)
-  eq("  second nil", Levels.Settle(s, 25, false, c), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  settleAt(s, 9, c)
-  eq("9 -> 92 out of combat: Ready", Levels.Update(s, 92, false, c), Levels.READY)
-  eq("  then nothing", Levels.Update(s, 93, false, c), nil)
-  eq("  Ready waits for the end of combat", (function()
-    local s2 = Levels.NewState()
-    settleAt(s2, 9, c)
-    return Levels.Update(s2, 95, true, c)
-  end)(), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  c.ready.enabled = false
-  settleAt(s, 9, c)
-  eq("Ready disabled: never fires", Levels.Update(s, 95, false, c), nil)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  c.levels[1].enabled = false
-  eq("L1 off: a drop to 45 does nothing", settleAt(s, 45, c), nil)
-  eq("  but 29 still gives L2", settleAt(s, 29, c), 2)
-end
-
-do
-  local c, s = cfg(60, 40, 20), Levels.NewState()
-  eq("60/40/20: 55 -> L1", settleAt(s, 55, c), 1)
-  eq("  35 -> L2", settleAt(s, 35, c), 2)
-  eq("  19 -> L3", settleAt(s, 19, c), 3)
-  eq("  10 -> nothing", settleAt(s, 10, c), nil)
-end
-
-do
-  check("Validate 50/30/10", Levels.Validate(cfg().levels))
-  local ok, why = Levels.Validate(cfg(30, 50, 10).levels)
-  check("Validate rejects 30/50/10", not ok)
-  eq("  because of the order", why, "ORDER")
-  eq("Validate rejects 0", select(2, Levels.Validate(cfg(50, 30, 0).levels)), "RANGE")
-  eq("Validate rejects 100", select(2, Levels.Validate(cfg(100, 30, 10).levels)), "RANGE")
-  local c = cfg(30, 50, 10)
-  c.levels[1].enabled = false
-  check("Validate ignores a disabled level", Levels.Validate(c.levels))
-  eq("Validate rejects equal levels", select(2, Levels.Validate(cfg(50, 50, 10).levels)), "ORDER")
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  settleAt(s, 29, c)
-  eq("secret pct: Update nil", Levels.Update(s, SECRET, false, c), nil)
-  eq("  Settle nil", Levels.Settle(s, SECRET, false, c), nil)
-  eq("  state unchanged", s.lastPct, 29)
-  eq("  announced unchanged", s.announced, 2)
-end
-
-do
-  local c, s = cfg(), Levels.NewState()
-  eq("Update out of combat arms on a new level", Levels.Update(s, 45, false, c), Levels.ARM)
-  eq("  never in combat", Levels.Update(s, 25, true, c), nil)
-  Levels.Settle(s, 25, false, c)
-  eq("  not again for the same level", Levels.Update(s, 24, false, c), nil)
+  local function v(a, b, c, r)
+    return select(2, Levels.Validate({ { pct = a }, { pct = b }, { pct = c } }, r and { pct = r })) or "ok"
+  end
+  eq("Validate 50/30/10 + 90", v(50, 30, 10, 90), "ok")
+  eq("Validate 30/50/10: order", v(30, 50, 10), "ORDER")
+  eq("Validate equal levels: order", v(50, 50, 10), "ORDER")
+  eq("Validate 0: range", v(50, 30, 0), "RANGE")
+  eq("Validate 100: range", v(100, 30, 10), "RANGE")
+  eq("Validate 12.5: range", v(50, 12.5, 10), "RANGE")
+  eq("Validate Ready 40 under level 1: ready", v(50, 30, 10, 40), "READY")
+  eq("Validate Ready equal to level 1: ready", v(50, 30, 10, 50), "READY")
 end
 
 do
   local c = cfg()
-  eq("IsDrinking: aura true", Levels.IsDrinking(true, 20, 20, c), true)
-  eq("IsDrinking: aura unknown, rise 12", Levels.IsDrinking(nil, 20, 32, c), true)
-  eq("IsDrinking: aura unknown, rise 3", Levels.IsDrinking(nil, 20, 23, c), false)
-  eq("IsDrinking: no aura, secret pcts", Levels.IsDrinking(false, SECRET, SECRET, c), false)
+  local p = Levels.ColorPoints(c)
+  eq("ColorPoints smooth: linear", p.type, "linear")
+  eq("  four points", #p.points, 4)
+  near("  x1 = 0", p.points[1][1], 0)
+  near("  x2 = 0.1", p.points[2][1], 0.1)
+  near("  x3 = 0.3", p.points[3][1], 0.3)
+  near("  x4 = 0.5", p.points[4][1], 0.5)
+  near("  red at 0 (green part)", p.points[1][3], 0)
+  near("  red at level 3", p.points[2][3], 0)
+  near("  orange at level 2", p.points[3][3], 0.5)
+  near("  yellow at level 1", p.points[4][3], 1)
+  local withFine = Levels.ColorPoints(c, { 0, 0, 1 })
+  eq("  a fine color adds one point", #withFine.points, 5)
+  check("  just above level 1", withFine.points[5][1] > 0.5 and withFine.points[5][1] < 0.51)
+  near("  and it's blue", withFine.points[5][4], 1)
 end
 
 do
-  eq("Pct 437/1000", Levels.Pct(437, 1000), 43)
-  eq("Pct max 0", Levels.Pct(0, 0), nil)
-  eq("Pct secret", Levels.Pct(SECRET, 1000), nil)
+  local c = cfg(50, 30, 10, "steps")
+  local p = Levels.ColorPoints(c)
+  eq("ColorPoints steps: step", p.type, "step")
+  eq("  five bands below 50%", #p.points, 5)
+  for i, point in ipairs(p.points) do near("  band " .. i .. " starts on a 10% line", point[1], (i - 1) / 10) end
+  near("  the 0-10% band is red", p.points[1][3], 0)
+  near("  the 20-30% band is a red/orange blend", p.points[3][3], 0.375)
+  near("  the 40-50% band is an orange/yellow blend", p.points[5][3], 0.875)
+  eq("  level 1 at 80: eight bands", #Levels.ColorPoints(cfg(80, 30, 10, "steps")).points, 8)
+  eq("  a fine color adds the step at level 1", #Levels.ColorPoints(c, { 0, 0, 1 }).points, 6)
+  local r, g = Levels.ColorShown(27, c)
+  check("ColorShown in steps mode uses the band's color", r == 1 and math.abs(g - 0.375) < 1e-6)
+  near("ColorShown smooth at 20%", select(2, Levels.ColorShown(20, cfg())), 0.25)
+end
+
+do
+  local c = cfg()
+  local p = Levels.AlphaPoints(c)
+  eq("AlphaPoints with strength: linear", p.type, "linear")
+  near("  full at 0", p.points[1][2], 0.8)
+  near("  full at level 3", p.points[2][2], 0.8)
+  near("  level 3 x", p.points[2][1], 0.1)
+  near("  faint just under level 1", p.points[3][2], 0.4)
+  check("  just under", p.points[3][1] < 0.5 and p.points[3][1] > 0.49)
+  near("  zero at level 1", p.points[4][2], 0)
+  near("  level 1 x", p.points[4][1], 0.5)
+  near("AlphaAt 5%", Levels.AlphaAt(5, c), 0.8)
+  near("AlphaAt 30%", Levels.AlphaAt(30, c), 0.6)
+  near("AlphaAt 50%", Levels.AlphaAt(50, c), 0)
+  near("AlphaAt 80%", Levels.AlphaAt(80, c), 0)
+  c.look.strength = false
+  p = Levels.AlphaPoints(c)
+  eq("AlphaPoints without strength: step", p.type, "step")
+  near("  flat", p.points[1][2], 0.8)
+  near("  off at level 1", p.points[2][1], 0.5)
+  near("  to zero", p.points[2][2], 0)
+  near("AlphaAt 45% without strength", Levels.AlphaAt(45, c), 0.8)
+end
+
+do
+  local c = cfg(60, 40, 20)
+  local pulse, ready = Levels.PulsePoints(c), Levels.ReadyPoints(c)
+  near("PulsePoints: on from 0", pulse.points[1][2], 1)
+  near("  off at level 3 (20%)", pulse.points[2][1], 0.2)
+  near("  to zero", pulse.points[2][2], 0)
+  near("ReadyPoints: off from 0", ready.points[1][2], 0)
+  near("  on at Ready (90%)", ready.points[2][1], 0.9)
+  near("  to one", ready.points[2][2], 1)
+end
+
+do
+  local c = cfg()
+  local function known(t)
+    local k = { enabled = true, zoneOk = true, inCombat = false, dead = false, offline = false, drinking = false }
+    for key, value in pairs(t or {}) do k[key] = value end
+    return k
+  end
+  local a, grey, drinking = Levels.Holder(known(), c)
+  check("Holder: resting", math.abs(a - 0.7) < 1e-6 and not grey and not drinking)
+  a, grey, drinking = Levels.Holder(known({ drinking = true }), c)
+  check("Holder: drinking dims", math.abs(a - 0.35) < 1e-6 and not grey and drinking)
+  eq("Holder: combat hides", (Levels.Holder(known({ inCombat = true }), c)), 0)
+  a, grey, drinking = Levels.Holder(known({ inCombat = true, drinking = true }), c)
+  check("Holder: combat beats drinking", a == 0 and not grey and not drinking)
+  c.look.combat = "faint"
+  near("Holder: combat faint", (Levels.Holder(known({ inCombat = true }), c)), 0.15)
+  a, grey, drinking = Levels.Holder(known({ dead = true, drinking = true }), c)
+  check("Holder: dead beats drinking, greys", a == 0 and grey and not drinking)
+  a, grey = Levels.Holder(known({ offline = true }), c)
+  check("Holder: offline greys", a == 0 and grey)
+  a, grey = Levels.Holder(known({ enabled = false, dead = true }), c)
+  check("Holder: off beats everything", a == 0 and not grey)
+  a, grey = Levels.Holder(known({ zoneOk = false, dead = true }), c)
+  check("Holder: wrong zone shows nothing", a == 0 and not grey)
+
+  eq("CanNudge: normal", Levels.CanNudge(known(), false), true)
+  eq("CanNudge: drinking", Levels.CanNudge(known({ drinking = true }), false), false)
+  eq("CanNudge: wiped", Levels.CanNudge(known(), true), false)
+  eq("CanNudge: combat", Levels.CanNudge(known({ inCombat = true }), false), false)
+  eq("CanNudge: dead", Levels.CanNudge(known({ dead = true }), false), false)
+  eq("CanNudge: off", Levels.CanNudge(known({ enabled = false }), false), false)
+end
+
+do
+  eq("Wiped: 3 of 5 dead", Levels.Wiped(3, 5), true)
+  eq("Wiped: 2 of 5 dead", Levels.Wiped(2, 5), false)
+  eq("Wiped: 1 of 2 dead (needs two)", Levels.Wiped(1, 2), false)
+  eq("Wiped: 2 of 2 dead", Levels.Wiped(2, 2), true)
+end
+
+do
+  local log = {}
+  eq("ButtonAllowed: first click", Levels.ButtonAllowed(100, log), true)
+  log[1] = 100
+  eq("  second inside 30 s: cooldown", select(2, Levels.ButtonAllowed(120, log)), "COOLDOWN")
+  eq("  after 30 s: ok", Levels.ButtonAllowed(131, log), true)
+  log[2], log[3] = 131, 170
+  eq("  fourth inside 5 min: cap", select(2, Levels.ButtonAllowed(210, log)), "CAP")
+  eq("  once the first ages out: ok", Levels.ButtonAllowed(401, log), true)
+  eq("Message fills tokens", Levels.Message("{name} ({class}) is dry", "Sherl", "PRIEST"), "Sherl (PRIEST) is dry")
+end
+
+do
+  local new = Levels.Migrate({
+    enabled = false, roleHint = false,
+    levels = { { enabled = true, pct = 60, color = { 1, 1, 1, 1 }, out = {} }, { pct = 40 }, { pct = 20 } },
+    ready = { pct = 95, out = {} }, look = { ghost = 40, palette = "water", badgePos = "TOPRIGHT" },
+    sound = { enabled = true }, announceMode = "group",
+  })
+  check("Migrate keeps levels", new.levels[1].pct == 60 and new.levels[3].pct == 20 and new.levels[1].color[1] == 1)
+  check("  and drops the v1 output grid", new.levels[1].out == nil and new.levels[1].enabled == nil)
+  check("  keeps enabled, role hint and ready", new.enabled == false and new.roleHint == false and new.ready.pct == 95)
+  check("  keeps ghost and palette", new.look.ghost == 40 and new.look.palette == "water")
+  check("  drops sound, chat and badge settings", new.sound == nil and new.announceMode == nil and new.look.badgePos == nil)
+  local bad = Levels.Migrate({ levels = { { pct = 30 }, { pct = 50 }, { pct = 10 } }, ready = { pct = 20 } })
+  check("Migrate drops an invalid level order", bad.levels[1] == nil)
+  check("  and a Ready that would sit under the default level 1", bad.ready == nil)
+end
+
+-- ---------------------------------------------------------------- settings
+
+do
+  local s = SoThirstyDB.settings
+  eq("defaults: version 2", SoThirstyDB.version, 2)
+  check("defaults: 50/30/10, Ready 90", s.levels[1].pct == 50 and s.levels[3].pct == 10 and s.ready.pct == 90)
+  eq("defaults: nudge 5 s after a fight", s.nudgeDelay, 5)
+  check("defaults validate", Levels.Validate(s.levels, s.ready))
+  eq("ZoneOk in a dungeon", (ns.ZoneOk()), true)
+  zone = "pvp"
+  local ok, pvp = ns.ZoneOk()
+  check("ZoneOk: battlegrounds are always off", ok == false and pvp == true)
+  zone = "raid"
+  s.zones.raid = false
+  eq("ZoneOk: raids switched off", (ns.ZoneOk()), false)
+  s.zones.raid = true
+  zone = "party"
 end
 
 -- ---------------------------------------------------------------- Roster (spec 5)
@@ -264,7 +320,7 @@ local function healerNames()
 end
 
 eq("startup: the healer is tracked", healerNames(), "Sherl")
-check("  power events are on", frames[#frames].events.UNIT_POWER_UPDATE)
+check("  unit events are on", rosterFrame.events.UNIT_POWER_UPDATE and rosterFrame.events.UNIT_AURA)
 
 units.party2.role = "HEALER"
 fire("ROLE_CHANGED_INFORM")
@@ -276,74 +332,240 @@ eq("role cleared: dropped", healerNames(), "Sherl")
 units.party1.role = SECRET
 fire("GROUP_ROSTER_UPDATE")
 eq("a secret role read is skipped", healerNames(), "")
-check("  power events go off with no healer", not frames[#frames].events.UNIT_POWER_UPDATE)
+check("  unit events go off with no healer", not rosterFrame.events.UNIT_POWER_UPDATE)
 units.party1.role = "HEALER"
 fire("GROUP_ROSTER_UPDATE")
 
 do
   local h = ns.Roster.ByUnit("party1")
-  units.party1.mana = 450
-  eq("Read: 45%", ns.Roster.Read(h), 45)
-  units.party1.mana = SECRET
-  local pct, why = ns.Roster.Read(h)
-  check("Read: secret mana is nil", pct == nil and why == "secret")
-  units.party1.mana, units.party1.dead = 450, true
-  eq("Read: dead", select(2, ns.Roster.Read(h)), "dead")
+  local k = ns.Roster.Known(h)
+  check("Known: alive, online, watching", k.enabled and k.zoneOk and not k.dead and not k.offline and not k.drinking)
+  units.party1.dead = true
+  eq("Known: dead", ns.Roster.Known(h).dead, true)
   units.party1.dead, units.party1.offline = nil, true
-  eq("Read: offline", select(2, ns.Roster.Read(h)), "offline")
+  eq("Known: offline", ns.Roster.Known(h).offline, true)
   units.party1.offline = nil
+  SoThirstyDB.settings.frames.enabled = false
+  eq("Known: frames switched off", ns.Roster.Known(h).enabled, false)
+  SoThirstyDB.settings.frames.enabled = true
 end
 
 do
-  -- Units shift; the GUID keeps its state.
+  -- Units shift; the GUID keeps its record.
   local before = ns.Roster.ByUnit("party1")
-  before.state.announced = 2
-  units.party1.mana = 250 -- 25%: still level 2, so the rescan's mana read doesn't re-arm it
   units.party3, units.party1 = units.party1, nil
   fire("GROUP_ROSTER_UPDATE")
   local after = ns.Roster.ByUnit("party3")
-  check("a healer who moves unit keeps their state", after == before and after.state.announced == 2)
+  check("a healer who moves unit keeps their record", after == before and after.unit == "party3")
   units.party1, units.party3 = units.party3, nil
   fire("GROUP_ROSTER_UPDATE")
-  after.state.announced = 0
 end
 
 do
-  -- Mana updates are coalesced, then run through Levels.Update.
-  local events = {}
-  ns.OnLevelEvent = function(h, result) events[#events + 1] = h.name .. ":" .. result.kind end
+  -- Mana and buff events are coalesced into one refresh per healer.
+  local updates = {}
+  local realUpdate = ns.UpdateHealer
+  ns.UpdateHealer = function(h) updates[#updates + 1] = h.name .. (h.drinking and ":drinking" or "") end
   runTimers()
-  units.party1.mana = 400
   fire("UNIT_POWER_UPDATE", "party1", "MANA")
   fire("UNIT_POWER_UPDATE", "party1", "MANA")
   fire("UNIT_POWER_UPDATE", "party2", "MANA") -- not a healer
   fire("UNIT_POWER_UPDATE", "party1", "ENERGY")
   eq("power updates wait for the 0.5 s timer", #timers, 1)
   runTimers()
-  eq("  one evaluation, one arm", table.concat(events, " "), "Sherl:arm")
-  ns.OnLevelEvent = nil
+  eq("  one refresh", table.concat(updates, " "), "Sherl")
+
+  updates = {}
+  units.party1.drink = true
+  fire("UNIT_AURA", "party1")
+  runTimers()
+  eq("a drink buff marks the healer as drinking", table.concat(updates, " "), "Sherl:drinking")
+  updates = {}
+  units.party1.drink = nil
+  fire("UNIT_AURA", "party1")
+  runTimers()
+  eq("  and it clears when the buff goes", table.concat(updates, " "), "Sherl")
+  ns.UpdateHealer = realUpdate
 end
 
 do
   grouped = false
   fire("GROUP_ROSTER_UPDATE")
   eq("solo: nothing tracked", healerNames(), "")
-  check("  power events off", not frames[#frames].events.UNIT_POWER_UPDATE)
+  check("  unit events off", not rosterFrame.events.UNIT_POWER_UPDATE)
   grouped = true
   fire("GROUP_ROSTER_UPDATE")
 end
 
 do
+  zone = "pvp"
+  fire("ZONE_CHANGED_NEW_AREA")
+  check("battleground: unit events off", not rosterFrame.events.UNIT_POWER_UPDATE)
+  zone = "party"
+  fire("ZONE_CHANGED_NEW_AREA")
+  check("  back on in a dungeon", rosterFrame.events.UNIT_POWER_UPDATE)
+end
+
+do
   raid = true
   units = {
-    raid1 = { guid = "Player-1", name = "Tanky", role = "TANK", class = "WARRIOR", mana = 0, max = 0 },
-    raid2 = { guid = "Player-2", name = "Sherl", role = "HEALER", class = "PRIEST", mana = 1000, max = 1000 },
+    raid1 = { guid = "Player-1", name = "Tanky", role = "TANK", class = "WARRIOR" },
+    raid2 = { guid = "Player-2", name = "Sherl", role = "HEALER", class = "PRIEST" },
   }
   units.player = units.raid1
   fire("GROUP_ROSTER_UPDATE")
   eq("raid: the healer is tracked by raid unit", (ns.Roster.ByUnit("raid2") or {}).name, "Sherl")
   reset()
   fire("GROUP_ROSTER_UPDATE")
+end
+
+-- ---------------------------------------------------------------- Combat and the nudge (spec 7)
+
+local nudged = {}
+ns.Frames = {
+  Update = function() end, UpdateAll = function() end, Restyle = function() end,
+  Nudge = function(h) nudged[#nudged + 1] = h.name end,
+}
+local function fight()
+  combat = true
+  fire("PLAYER_REGEN_DISABLED")
+  combat = false
+  fire("PLAYER_REGEN_ENABLED")
+end
+
+do
+  runTimers()
+  check("UNIT_FLAGS is watched with a healer in the group", combatFrame.events.UNIT_FLAGS)
+  combat = true
+  fire("PLAYER_REGEN_DISABLED")
+  eq("combat starts", ns.Combat.Is(), true)
+  eq("  the healer's known state says so", ns.Roster.Known(ns.Roster.ByUnit("party1")).inCombat, true)
+  combat = false
+  lastDelay = nil
+  fire("PLAYER_REGEN_ENABLED")
+  eq("combat ends", ns.Combat.Is(), false)
+  eq("  the nudge is 5 s away", lastDelay, 5)
+  eq("  nothing yet", #nudged, 0)
+  runTimers()
+  eq("  then one nudge", table.concat(nudged, " "), "Sherl")
+end
+
+do
+  nudged = {}
+  fight()
+  combat = true
+  fire("PLAYER_REGEN_DISABLED") -- chain pull before the timer
+  runTimers()
+  eq("a new fight cancels the nudge", #nudged, 0)
+  combat = false
+  fire("PLAYER_REGEN_ENABLED")
+  runTimers()
+  eq("  and the last fight's end nudges once", #nudged, 1)
+end
+
+do
+  nudged = {}
+  units.party1.drink = true
+  fight()
+  runTimers()
+  eq("a drinking healer gets no nudge", #nudged, 0)
+  units.party1.drink = nil
+
+  units.player.dead, units.party2.dead = true, true
+  fight()
+  eq("two of three dead is a wipe", ns.Combat.Wiped(), true)
+  runTimers()
+  eq("  no nudge after a wipe", #nudged, 0)
+  units.player.dead, units.party2.dead = nil, nil
+
+  units.party1.dead = true
+  fight()
+  runTimers()
+  eq("a dead healer gets no nudge", #nudged, 0)
+  units.party1.dead = nil
+
+  SoThirstyDB.settings.nudge = false
+  lastDelay = nil
+  fight()
+  eq("nudge switched off: no timer", lastDelay, nil)
+  SoThirstyDB.settings.nudge = true
+end
+
+do
+  runTimers()
+  units.party2.combat = true
+  fire("UNIT_FLAGS", "party2")
+  runTimers()
+  eq("someone else fighting counts as combat", ns.Combat.Is(), true)
+  units.party2.combat = nil
+  runTimers()
+  eq("  and it clears when they're done", ns.Combat.Is(), false)
+  runTimers()
+
+  SoThirstyDB.settings.combatScope = "me"
+  ns.Roster.Refresh()
+  check("combat scope \"me\": UNIT_FLAGS not watched", not combatFrame.events.UNIT_FLAGS)
+  units.party2.combat = true
+  ns.Combat.Check()
+  eq("  and others' fights don't count", ns.Combat.Is(), false)
+  units.party2.combat = nil
+  SoThirstyDB.settings.combatScope = "group"
+  ns.Roster.Refresh()
+  runTimers()
+end
+
+-- ---------------------------------------------------------------- the drink button (spec 8.2)
+
+do
+  local Button = ns.Button
+  sent, printed = {}, {}
+  eq("a click posts one line", Button.Say("thirsty"), true)
+  eq("  to party chat, with the tag", sent[1], "PARTY: [SoThirsty] Tanky needs a drink - hold the pull")
+  eq("a second click inside 30 s is refused", Button.Say("thirsty"), false)
+  eq("  nothing more sent", #sent, 1)
+  check("  and it says why", (printed[#printed] or ""):find("30 seconds") ~= nil)
+  clock = clock + 31
+  eq("after the cooldown: ready line", Button.Say("ready"), true)
+  eq("  the ready text", sent[2], "PARTY: [SoThirsty] Tanky is good to go")
+  clock = clock + 31
+  eq("third line", Button.Say("thirsty"), true)
+  clock = clock + 31
+  eq("fourth inside 5 minutes hits the cap", Button.Say("thirsty"), false)
+  eq("  three sent in all", #sent, 3)
+  clock = clock + 300
+  eq("after 5 minutes it works again", Button.Say("thirsty"), true)
+
+  clock = clock + 400
+  combat = true
+  fire("PLAYER_REGEN_DISABLED")
+  eq("never in combat", Button.Say("thirsty"), false)
+  combat = false
+  fire("PLAYER_REGEN_ENABLED")
+  runTimers()
+
+  zone = "pvp"
+  eq("never in a battleground", Button.Say("thirsty"), false)
+  zone = "party"
+
+  SoThirstyDB.settings.button.party = false
+  eq("party chat unchecked: refused", Button.Say("thirsty"), false)
+  SoThirstyDB.settings.button.party = true
+
+  grouped = false
+  eq("solo: refused", Button.Say("thirsty"), false)
+  grouped = true
+
+  raid = true
+  sent = {}
+  eq("in a raid", Button.Say("thirsty"), true)
+  check("  it goes to raid chat", (sent[1] or ""):find("^RAID: ") ~= nil, sent[1])
+  raid = false
+
+  SoThirstyDB.settings.button.prefix = false
+  SoThirstyDB.settings.button.thirstyMsg = "{name} is parched"
+  eq("a custom line, no tag", Button.Line("thirsty"), "Tanky is parched")
+  SoThirstyDB.settings.button.prefix = true
+  SoThirstyDB.settings.button.thirstyMsg = nil
 end
 
 -- ---------------------------------------------------------------- slash commands
@@ -355,22 +577,37 @@ do
   check("/sot levels 60 40 20", lv[1].pct == 60 and lv[2].pct == 40 and lv[3].pct == 20)
   ns.RunCommand("levels 30 50 10")
   check("/sot levels 30 50 10 is rejected", lv[1].pct == 60 and printed[#printed]:find("lower than"))
+  ns.RunCommand("levels 95 40 20")
+  check("/sot levels above Ready is rejected", lv[1].pct == 60 and printed[#printed]:find("Ready"))
   ns.RunCommand("levels 50 30 10")
   ns.RunCommand("off")
-  check("/sot off", SoThirstyDB.settings.enabled == false and not frames[#frames].events.UNIT_POWER_UPDATE)
+  check("/sot off", SoThirstyDB.settings.enabled == false and not rosterFrame.events.UNIT_POWER_UPDATE)
   ns.RunCommand("on")
-  check("/sot on", SoThirstyDB.settings.enabled == true and frames[#frames].events.UNIT_POWER_UPDATE)
+  check("/sot on", SoThirstyDB.settings.enabled == true and rosterFrame.events.UNIT_POWER_UPDATE)
   printed = {}
   ns.RunCommand("status")
   check("/sot status lists the healer", (printed[2] or ""):find("Sherl") ~= nil, printed[2])
+  printed = {}
+  ns.RunCommand("")
+  check("/sot with no options window prints status", (printed[2] or ""):find("Sherl") ~= nil, printed[2])
+  ns.RunCommand("meter")
+  eq("/sot meter turns the meter on", SoThirstyDB.settings.meter.enabled, true)
+  ns.RunCommand("meter")
+  eq("  and off", SoThirstyDB.settings.meter.enabled, false)
+  ns.RunCommand("move")
+  eq("/sot move unlocks", ns.unlocked, true)
+  ns.RunCommand("lock")
+  eq("/sot lock locks", ns.unlocked, false)
   ns.RunCommand("ghost 40")
   eq("/sot ghost 40", SoThirstyDB.settings.look.ghost, 40)
   ns.RunCommand("ghost 200")
   eq("/sot ghost 200 is rejected", SoThirstyDB.settings.look.ghost, 40)
-  ns.RunCommand("ghost 0")
-  eq("/sot ghost 0 turns it off", SoThirstyDB.settings.look.ghost, 0)
   ns.RunCommand("bogus")
   check("an unknown command says so", printed[#printed]:find("Unknown command") ~= nil)
+  local s = SoThirstyDB.settings
+  check("Theme.ApplyFeel calm", ns.Theme.ApplyFeel(s, "calm") and s.nudge == false and s.look.pulse == false)
+  check("Theme.ApplyPalette water", ns.Theme.ApplyPalette(s, "water") and s.look.palette == "water")
+  eq("  level 3 turns violet", s.levels[3].color[3], 0.97)
 end
 
 print(("%d passed, %d failed"):format(passed, failed))

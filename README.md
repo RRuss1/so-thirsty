@@ -1,27 +1,44 @@
 # So Thirsty
 
-A lightweight addon for **WoW: Forever** that tells your group when the **healer is low on mana**, so the tank waits for them to drink before the next pull.
+A lightweight addon for **WoW: Forever** that shows when your **healer is low on mana**, so the tank waits for them to drink before the next pull.
 
-- **Only one person in the group needs it.** It watches every healer, including healers who don't have the addon.
-- **Never mid-fight.** It speaks once, about 10 seconds after combat ends, and only if the healer is low **and not already drinking**.
-- **Calm by design.** One chat line per fight at most, never the same warning twice, and never raid warnings.
+- **A glow on the healer's frame.** Below 50% mana their party/raid frame glows yellow, turning orange and then red as mana falls, in 10% bands.
+- **Silent.** It never posts to chat or plays a sound on its own.
+- **Out of combat.** The glow hides during fights and gives one short nudge 5 seconds after a fight ends.
+- **Drinking shows.** A healer who is drinking gets a dimmed glow and a drink icon.
+- **One button for chat.** The healer can click "I need a drink" to post one line to the group.
 
-> **Status: early development.** Phases 1–2 (skeleton, healer tracking, `/sot status`) are built. Warnings, frame highlights and the Options window come next. See [CHANGELOG.md](CHANGELOG.md).
+> **Status: beta, not yet tested in a group.** Everything below is built, but only the mana-color part has been checked in game so far. See [CHANGELOG.md](CHANGELOG.md).
+
+## Good to know
+
+- **The game hides mana numbers from addons** on Forever. So Thirsty can show mana as a color, but it can't know the number. That's why there are no automatic chat warnings and no percentages in its text.
+- **Each player who wants the glow needs the addon.** The glow is drawn on your own screen. Players without it only see the chat line, when the healer clicks the button.
+- It works with the game's own party and raid frames. ElvUI, Cell, Grid2 and VuhDo are planned.
 
 ## How it decides who the healer is
 
-It uses the game's **role**: right-click the healer's portrait > **Set Role** > Healer (or the role check). No role set, no warnings.
+It uses the game's **role**: right-click the healer's portrait > **Set Role** > Healer (or the role check). No role set, no glow.
 
-## Warning levels
+## Levels
 
-| Level | Default | Default outputs |
+| Level | Default | Color |
 |---|---|---|
-| 1 | below 50% | frame highlight + on-screen (no chat) |
-| 2 | below 30% | + party and instance chat |
-| 3 | below 10% | + raid chat and a sound |
-| Ready | back to 90% | clears the highlight, on-screen only |
+| 1 "getting thirsty" | below 50% | yellow, faint |
+| 2 "thirsty" | below 30% | orange |
+| 3 "so thirsty" | below 10% | red, full strength, slow pulse |
+| Ready | 90% and up | optional green tick after a fight |
 
-Every level, color, chat channel and sound will be adjustable in the Options window.
+Levels move in steps of 10. Colors, glow style, strength, the pulse, the nudge and more are in the Options window (`/sot`).
+
+## The drink button
+
+A small button appears when your role is Healer and you're in a group.
+
+- **Left-click:** posts `[SoThirsty] <you> needs a drink - hold the pull`
+- **Right-click:** posts `[SoThirsty] <you> is good to go`
+
+It posts to party, raid or instance chat, whichever your group uses. Limits: 30 seconds between lines, 3 lines per 5 minutes, never in combat, never in battlegrounds or arenas. You can edit both lines.
 
 ## Commands
 
@@ -29,23 +46,26 @@ Every level, color, chat channel and sound will be adjustable in the Options win
 
 | Command | Does |
 |---|---|
-| `/sot status` | Healers being watched, their mana, and whether they're drinking |
+| `/sot` | Open the Options window |
+| `/sot status` | Healers being watched |
 | `/sot on` / `off` | Turn it on or off |
-| `/sot levels 50 30 10` | Set the three warning levels |
+| `/sot levels 50 30 10` | Set the three levels |
+| `/sot drink` / `ready` | Same as clicking the button |
+| `/sot meter` | Show or hide the thirst meter (a small panel of healer mana bars) |
+| `/sot move` / `lock` | Unlock or lock the button and the meter to drag them |
+| `/sot test` | Play the preview (nothing is posted) |
 | `/sot ghost 25` | How strongly the faint waterskin shows behind windows (0 = off) |
 | `/sot debug` | What the game tells the addon (paste this into bug reports) |
-| `/sot debug mana` | Every way the game offers to read mana, and which ones it hides |
-| `/sot debug curve` | Whether hidden mana can still drive a color or a fade |
-| `/sot debug swatch` | Live preview of your own mana as a color and a fade |
+| `/sot debug party` | Checks that the glow works on group members |
+| `/sot debug frames` | Which unit frame the glow sits on |
 | `/sot debug drink` | Each healer's buffs and whether they count as drinking |
-| `/sot debug events` | Print role and combat events live (toggle) |
-| `/sot debug window` | Open a sample window |
+| `/sot debug icons` | The game icons the addon uses |
 | `/sot help` | Command list |
 
 ## Planned
 
-Third-party unit frames (ElvUI, Cell, Grid2, VuhDo), a small "thirst meter" panel, translations.
+Third-party unit frames (ElvUI, Cell, Grid2, VuhDo), translations.
 
 ## Privacy
 
-So Thirsty sends nothing anywhere except your own group chat, when a warning is set to post there. See [PRIVACY.md](PRIVACY.md).
+So Thirsty sends nothing anywhere except one line to your own group chat when you click the drink button. See [PRIVACY.md](PRIVACY.md).

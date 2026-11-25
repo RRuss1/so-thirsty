@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.0 — Design v2: the glow (unreleased, not yet tested in a group)
+
+In-game tests showed that Forever always hides mana from addons, so the first design (read mana, post chat warnings) can't exist. Design v2 shows mana visually and adds a manual chat button. The spec was rewritten around it.
+
+- **Glow on healer frames** (`Frames.lua`, `Curves.lua`): color and strength come from the game's curve functions, in 10% bands (smooth or stepped). Five styles: soft glow, border, corners, tint, bar strip.
+- **Known-state dimming:** hidden in combat (or very faint), dimmed with a drink icon while the healer drinks, a grey edge for dead or offline healers.
+- **Motion** (`Combat.lua`): one nudge 5 seconds after a fight, skipped on chain pulls, after a wipe and for drinking healers; a slow pulse below level 3; optional ready tick and range fade.
+- **Drink button** (`Button.lua`): "I need a drink" / "good to go", one line per click, 30 s cooldown, 3 lines per 5 minutes, never in combat or PvP. `/sot drink`, `/sot ready`.
+- **Thirst meter** (`UI/Meter.lua`, off by default): a small movable panel of healer mana bars.
+- **Options window** (`UI/Options.lua`): Levels, Look, Motion, Button and General tabs, color pickers, palettes, feel presets and a live preview. `/sot` opens it; `/sot test` plays the preview.
+- `Levels.lua` rewritten as pure curve-point and visibility logic, with tests. v1 settings are migrated.
+- New checks: `/sot debug party`, `/sot debug frames`, `/sot debug icons`.
+- Removed: automatic chat lines, sounds, the on-screen banner, the poster election and addon messages. They all needed the mana number.
+
 ## v0.2.0 — Logic (unreleased)
 
 - `Levels.lua`: the warning-level state machine (spec 6.2). Pure, with tests for every rule in spec 6.3.

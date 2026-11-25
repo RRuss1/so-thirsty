@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: So Thirsty
-## Notes: Tells your group when the healer is low on mana, out of combat, so the tank waits before pulling.
+## Notes: Shows when your healer is low on mana, out of combat, so the tank waits before pulling.
 ## Author: Slac Jaw from RP-PVP
 ## Version: @project-version@
 ## SavedVariables: SoThirstyDB
@@ -11,8 +11,15 @@
 
 Locales\enUS.lua
 Core.lua
+Theme.lua
 Levels.lua
 Roster.lua
 Drink.lua
+Combat.lua
+Curves.lua
+Frames.lua
+Button.lua
 Debug.lua
 UI\Window.lua
+UI\Meter.lua
+UI\Options.lua

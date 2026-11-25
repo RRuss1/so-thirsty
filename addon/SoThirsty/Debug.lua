@@ -50,36 +50,22 @@ function ns.Debug()
   line("InCombatLockdown / player in combat", InCombatLockdown(), UnitAffectingCombat("player"))
   line("leader", UnitIsGroupLeader("player"))
   line("healers tracked", ns.Roster.Count())
+  line("zone ok / group in combat", (ns.ZoneOk()), ns.Combat.Is())
   local units = ns.Roster.GroupUnits()
   if not units then return describeUnit("player") end
   for _, unit in ipairs(units) do describeUnit(unit) end
 end
 
--- /sot debug drink: each healer's buffs and the drink verdict now, then the mana change
--- 10 seconds later (spec 16 Q11, Q12).
+-- /sot debug drink: each healer's buffs and whether one counts as drinking (spec 16 Q11).
 function ns.DebugDrink()
   ns.Print(L.DEBUG_DRINK_HEADER)
   ns.Roster.Scan()
   if ns.Roster.Count() == 0 then return ns.Print(L.DEBUG_DRINK_NONE) end
-  local start = {}
-  for guid, h in pairs(ns.Roster.healers) do
+  for _, h in pairs(ns.Roster.healers) do
     DEFAULT_CHAT_FRAME:AddMessage(("|cff4fc3f7[%s]|r %s"):format(h.unit, show(h.name)))
     for i, a in ipairs(ns.Drink.List(h.unit)) do line("buff " .. i, a.name, a.spellId) end
-    line("drink buff match", ns.Drink.AuraMatch(h.unit))
-    local pct, why = ns.Roster.Read(h)
-    line("mana % now", pct or why)
-    start[guid] = pct
+    line("drink buff match (true / false / nil = hidden)", ns.Drink.AuraMatch(h.unit))
   end
-  C_Timer.After(10, function()
-    ns.Print("debug drink, 10 seconds later:")
-    for guid, h in pairs(ns.Roster.healers) do
-      local pct, why = ns.Roster.Read(h)
-      local before = start[guid]
-      local rise = (pct and before) and (pct - before) or nil
-      local drinking = ns.Levels.IsDrinking(ns.Drink.AuraMatch(h.unit), before, pct, ns.Settings())
-      line(show(h.name), "now " .. tostring(pct or why), "change " .. tostring(rise), "counts as drinking: " .. tostring(drinking))
-    end
-  end)
 end
 
 -- /sot debug mana: tries every official way to read mana, since plain UnitPower came back
@@ -321,4 +307,94 @@ function ns.DebugWindow()
     close:SetScript("OnClick", function() sample:Hide() end)
   end
   sample:Show()
+end
+
+-- /sot debug party: the open design-v2 questions (spec 16 Q20-Q24), on every group member.
+-- Run it in a group, out of combat. Nothing here reads a hidden number.
+local function flag(label, ok, err)
+  line(label, ok and "ok" or ("error: " .. tostring(err)))
+end
+
+function ns.DebugParty()
+  ns.Print(L.DEBUG_PARTY_HEADER)
+  local Curves = ns.Curves
+  line("curves available / build error", Curves.Available(), Curves.error)
+  local tex = UIParent:CreateTexture()
+  local bar = CreateFrame("StatusBar")
+  bar:SetStatusBarTexture("Interface\TargetingFrame\UI-StatusBar")
+  bar:SetMinMaxValues(0, 1)
+  local holder = CreateFrame("Frame")
+  line("Frame has SetAlphaFromBoolean", holder.SetAlphaFromBoolean ~= nil)
+  for _, unit in ipairs(ns.Roster.GroupUnits() or { "player" }) do
+    if UnitExists(unit) then
+      DEFAULT_CHAT_FRAME:AddMessage(("|cff4fc3f7[%s]|r %s"):format(unit, show(UnitName(unit))))
+      -- Q20: curves on this unit's mana.
+      local okC, r, g, b = Curves.Color(unit, "color")
+      line("Q20 color curve", okC and "ok" or "failed")
+      if okC then flag("Q20 SetVertexColor", pcall(tex.SetVertexColor, tex, r, g, b)) end
+      local okA, a = Curves.Value(unit, "alpha")
+      line("Q20 strength curve", okA and "ok" or "failed")
+      if okA then flag("Q20 SetAlpha", pcall(tex.SetAlpha, tex, a)) end
+      -- Q21: range fade.
+      local inRange = UnitInRange(unit)
+      line("Q21 UnitInRange", inRange)
+      flag("Q21 Texture:SetAlphaFromBoolean", pcall(tex.SetAlphaFromBoolean, tex, inRange, 1, 0.4))
+      if holder.SetAlphaFromBoolean then
+        flag("Q21 Frame:SetAlphaFromBoolean", pcall(holder.SetAlphaFromBoolean, holder, inRange, 1, 0.4))
+      end
+      -- Q23, Q24: the meter bar.
+      local okF, fraction = Curves.Fraction(unit)
+      line("Q23 mana as a 0-1 fraction", okF and "ok" or "failed")
+      if okF then flag("Q23 StatusBar:SetValue", pcall(bar.SetValue, bar, fraction)) end
+      local okM, mr, mg, mb = Curves.Color(unit, "meter")
+      if okM then
+        flag("Q24 StatusBar:SetStatusBarColor", pcall(bar.SetStatusBarColor, bar, mr, mg, mb))
+        local fill = bar:GetStatusBarTexture()
+        if fill then flag("Q24 bar texture SetVertexColor", pcall(fill.SetVertexColor, fill, mr, mg, mb)) end
+      end
+      -- Q11: buffs readable?
+      line("Q11 drink buff match (true / false / nil = hidden)", ns.Drink.AuraMatch(unit))
+    end
+  end
+  tex:Hide()
+  ns.Print(L.DEBUG_PARTY_FOOT)
+end
+
+-- /sot debug frames: which unit frame the glow would sit on, per group member (spec 16 Q8).
+function ns.DebugFrames()
+  ns.Print(L.DEBUG_FRAMES_HEADER)
+  local report, candidates = ns.Frames.Report()
+  line("unit frames the addon knows about", candidates)
+  for _, entry in ipairs(report) do
+    line(entry.unit .. (entry.healer and " (healer)" or ""), entry.frame or "none found")
+  end
+end
+
+-- /sot debug icons: shows each icon the addon borrows from the game. A blank or green
+-- square means the client doesn't have it (spec 16 Q16).
+local iconWindow
+function ns.DebugIcons()
+  if not iconWindow then
+    iconWindow = ns.CreateWindow("SoThirstyIcons", 420, 240, L.ADDON)
+    local c = iconWindow.content
+    local list = {}
+    for _, name in ipairs(ns.Theme.ICON_ORDER) do list[#list + 1] = { name, ns.Theme.ICONS[name] } end
+    list[#list + 1] = { "ready", ns.Theme.READY_ICON }
+    list[#list + 1] = { "bar", ns.Theme.BAR }
+    for i, entry in ipairs(list) do
+      local t = c:CreateTexture(nil, "ARTWORK")
+      t:SetSize(40, 40)
+      t:SetPoint("TOPLEFT", 20 + (i - 1) * 68, -24)
+      t:SetTexture(entry[2])
+      local label = ns.Text(c, "muted", 11)
+      label:SetPoint("TOP", t, "BOTTOM", 0, -4)
+      label:SetText(entry[1])
+    end
+    local note = ns.Text(c, "body", 12)
+    note:SetPoint("TOPLEFT", 16, -100)
+    note:SetPoint("RIGHT", -16, 0)
+    note:SetWordWrap(true)
+    note:SetText(L.DEBUG_ICONS_NOTE)
+  end
+  iconWindow:Show()
 end

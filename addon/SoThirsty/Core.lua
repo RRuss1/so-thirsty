@@ -2,54 +2,49 @@
 local addonName, ns = ...
 local L = ns.L
 
--- Spec 12.1. Account-wide; there's no per-character DB in v1.
+-- Spec 12.1 (design v2). Account-wide.
+local DB_VERSION = 2
 local DB_DEFAULTS = {
-  version = 1,
   settings = {
     enabled = true,
-    -- color: {r, g, b, a} from the color picker; out: the output grid row (spec 9.1).
+    -- The three level colors are anchors; the bands between them are blended (spec 6.1).
     levels = {
-      { enabled = true, pct = 50, color = { 1, 0.82, 0, 1 },
-        out = { frame = true, screen = true, party = false, raid = false, instance = false, sound = false } },
-      { enabled = true, pct = 30, color = { 1, 0.5, 0, 1 },
-        out = { frame = true, screen = true, party = true, raid = false, instance = true, sound = false } },
-      { enabled = true, pct = 10, color = { 1, 0.125, 0.125, 1 },
-        out = { frame = true, screen = true, party = true, raid = true, instance = true, sound = true } },
+      { pct = 50, color = { 1, 0.82, 0, 1 } },
+      { pct = 30, color = { 1, 0.5, 0, 1 } },
+      { pct = 10, color = { 1, 0.125, 0.125, 1 } },
     },
-    ready = { enabled = true, pct = 90, color = { 0.25, 1, 0.25, 1 },
-      out = { frame = true, screen = true, party = false, raid = false, instance = false, sound = false } },
-    rearmMargin = 5,
-    settleSeconds = 10,
-    drinkRise = 10,
+    ready = { pct = 90, color = { 0.25, 1, 0.25, 1 } },
+    nudge = true, nudgeDelay = 5, nudgeHold = 3,
     quietAfterWipe = true,
     combatScope = "group",          -- "group" | "me"
-    announceMode = "group",         -- "group" | "self" | "local"
-    announceMe = true,
-    chat = { prefix = true },
-    onScreen = {
-      mode = "all",                 -- "all" | "tank" | "off" (always our banner; never raid warnings)
-      self = false,
-      scale = 100, hold = 4, sameSize = false,
-      bgColor = { 0.08, 0.05, 0.1, 0.85 }, borderColor = { 0.62, 0.3, 1, 1 },
-    },
-    frames = { enabled = true, badge = true, showDrinking = true },
+    frames = { enabled = true, drop = true, readyTick = false, rangeFade = false },
     look = {
-      palette = "classic",
-      drinkColor = { 0.31, 0.76, 0.97, 1 },
-      prefixColor = { 0.31, 0.76, 0.97, 1 },
-      style = "glow", thickness = 2, alpha = 80,
-      pulse = "L3", pulseSpeed = "normal",
-      badgeContent = "pct", badgePos = "TOPRIGHT", badgeSize = "medium",
+      palette = "classic",          -- "classic" | "water" | "colorblind" | "custom"
+      bands = "smooth",             -- "smooth" | "steps"
+      strength = true, alpha = 80, faint = 35,
+      rest = 70,                    -- resting brightness; the nudge lifts it to 100 for a moment
+      drinkDim = 35,
+      combat = "hide",              -- "hide" | "faint"
+      pulse = true, pulseSpeed = "normal",
+      style = "glow",               -- "glow" | "border" | "corners" | "tint" | "bar"
+      thickness = 2,
       icon = "drop",
-      ghost = 25,                   -- the faint greyscale icon behind window content, 0-100 % (0 = off)
+      drinkColor = { 0.31, 0.76, 0.97, 1 },
+      greyColor = { 0.6, 0.6, 0.6, 0.6 },
+      ghost = 25,                   -- the faint greyscale icon behind window content, 0-100 %
     },
-    highlightInCombat = "hide",     -- "hide" | "freeze"
-    sound = { enabled = true, channel = "Master", tankAll = true, levels = { "none", "none", "alert" }, ready = "none" },
-    zones = { dungeon = true, raid = true, world = false },
+    button = {
+      show = "healer",              -- "healer" | "always" | "never"
+      party = true, raid = true, instance = true,
+      prefix = true,
+    },
+    meter = { enabled = false, scale = 100 },
+    zones = { dungeon = true, raid = true, world = true },
     roleHint = true,
     debugEvents = false,
   },
 }
+ns.DB_DEFAULTS = DB_DEFAULTS
 
 local function applyDefaults(t, defaults)
   for k, v in pairs(defaults) do
@@ -65,8 +60,8 @@ ns.applyDefaults = applyDefaults
 
 function ns.Settings() return SoThirstyDB.settings end
 
--- Midnight-era clients hide some unit data as "secret values" (spec Section 2). Never do math
--- or comparisons on one: check with this first.
+-- Mana, health and range are always secret on Forever (spec Section 2). Never compare, test
+-- or do math on a secret: check with this first.
 function ns.IsSecret(v)
   return issecretvalue ~= nil and v ~= nil and issecretvalue(v) == true
 end
@@ -75,13 +70,48 @@ function ns.Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage(L.PREFIX .. tostring(msg))
 end
 
--- The group chat channel a line would go to (spec 8.3). Never SAY, YELL or RAID_WARNING.
--- Returns the channel and the per-level key ("party" | "raid" | "instance"), or nil when solo.
+-- The group chat channel the drink button would use (spec 8.2). Never SAY, YELL or
+-- RAID_WARNING. Returns the channel and its settings key, or nil when solo.
 function ns.ChatChannel()
   if LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT", "instance" end
   if IsInRaid() then return "RAID", "raid" end
   if IsInGroup() then return "PARTY", "party" end
   return nil
+end
+
+-- Battlegrounds and arenas are always off; the rest follow settings.zones (spec 10).
+-- Second return is true for PvP instances.
+function ns.ZoneOk()
+  local _, kind = IsInInstance()
+  if kind == "pvp" or kind == "arena" then return false, true end
+  local z = ns.Settings().zones
+  if kind == "party" then return z.dungeon end
+  if kind == "raid" then return z.raid end
+  return z.world
+end
+
+-- ---------------------------------------------------------------- refresh fan-out
+
+-- One healer changed (mana event, buff, state).
+function ns.UpdateHealer(h)
+  if ns.Frames then ns.Frames.Update(h) end
+  if ns.Meter then ns.Meter.Update() end
+end
+
+-- Roster, combat or zone changed.
+function ns.UpdateAll()
+  if ns.Frames then ns.Frames.UpdateAll() end
+  if ns.Meter then ns.Meter.Update() end
+  if ns.Button then ns.Button.Refresh() end
+end
+
+-- A setting changed: rebuild the curves and repaint everything.
+function ns.Apply()
+  if ns.Curves then ns.Curves.Rebuild() end
+  if ns.Frames then ns.Frames.Restyle() end
+  ns.Roster.Refresh()
+  if ns.RefreshGhosts then ns.RefreshGhosts() end
+  if ns.RefreshOptions then ns.RefreshOptions() end
 end
 
 -- ---------------------------------------------------------------- slash commands
@@ -91,28 +121,61 @@ local function setLevels(rest)
   local a, b, c = rest:match("^(%d+)%s+(%d+)%s+(%d+)$")
   if not a then return ns.Print(L.LEVELS_USAGE) end
   local wanted = { tonumber(a), tonumber(b), tonumber(c) }
-  local list = {}
-  for i, lv in ipairs(ns.Settings().levels) do list[i] = { enabled = lv.enabled, pct = wanted[i] } end
-  local ok, why = ns.Levels.Validate(list)
-  if not ok then return ns.Print(why == "RANGE" and L.LEVELS_BAD_RANGE or L.LEVELS_BAD_ORDER) end
-  for i, lv in ipairs(ns.Settings().levels) do lv.pct = wanted[i] end
+  local s = ns.Settings()
+  local ok, why = ns.Levels.Validate({ { pct = wanted[1] }, { pct = wanted[2] }, { pct = wanted[3] } }, s.ready)
+  if not ok then
+    return ns.Print(why == "RANGE" and L.LEVELS_BAD_RANGE or why == "READY" and L.LEVELS_BAD_READY:format(s.ready.pct)
+      or L.LEVELS_BAD_ORDER)
+  end
+  for i, lv in ipairs(s.levels) do lv.pct = wanted[i] end
   ns.Print(L.LEVELS_SET:format(wanted[1], wanted[2], wanted[3]))
-  ns.Roster.Refresh()
+  ns.Apply()
 end
+
+local function setEnabled(on)
+  ns.Settings().enabled = on
+  ns.Apply()
+  ns.Print(on and L.ENABLED or L.DISABLED)
+end
+
+local function openOptions()
+  if ns.ToggleOptions then return ns.ToggleOptions() end
+  ns.PrintStatus()
+end
+
+local DEBUG = {
+  drink = "DebugDrink", window = "DebugWindow", mana = "DebugMana", curve = "DebugCurve", swatch = "DebugSwatch",
+  party = "DebugParty", frames = "DebugFrames", icons = "DebugIcons",
+}
 
 local COMMANDS = {
   help = function() for _, line in ipairs(L.HELP) do DEFAULT_CHAT_FRAME:AddMessage(line) end end,
-  on = function()
-    ns.Settings().enabled = true
-    ns.Roster.Refresh()
-    ns.Print(L.ENABLED)
-  end,
-  off = function()
-    ns.Settings().enabled = false
-    ns.Roster.Refresh()
-    ns.Print(L.DISABLED)
-  end,
+  on = function() setEnabled(true) end,
+  off = function() setEnabled(false) end,
+  options = openOptions,
   levels = setLevels,
+  drink = function() ns.Button.Say("thirsty") end,
+  ready = function() ns.Button.Say("ready") end,
+  meter = function()
+    local m = ns.Settings().meter
+    m.enabled = not m.enabled
+    ns.Print(m.enabled and L.METER_ON or L.METER_OFF)
+    ns.Apply()
+  end,
+  move = function()
+    ns.unlocked = true
+    ns.UpdateAll()
+    ns.Print(L.MOVE_ON)
+  end,
+  lock = function()
+    ns.unlocked = false
+    ns.UpdateAll()
+    ns.Print(L.MOVE_OFF)
+  end,
+  test = function()
+    if ns.PlayPreview then return ns.PlayPreview() end
+    ns.Print(L.TEST_UNAVAILABLE)
+  end,
   ghost = function(rest)
     local n = tonumber(rest)
     if not n or n < 0 or n > 100 then return ns.Print(L.GHOST_USAGE) end
@@ -122,17 +185,14 @@ local COMMANDS = {
   end,
   status = function() ns.PrintStatus() end,
   debug = function(rest)
-    if rest == "drink" then return ns.DebugDrink() end
-    if rest == "window" then return ns.DebugWindow() end
-    if rest == "mana" then return ns.DebugMana() end
-    if rest == "curve" then return ns.DebugCurve() end
-    if rest == "swatch" then return ns.DebugSwatch() end
     if rest == "events" then
       local s = ns.Settings()
       s.debugEvents = not s.debugEvents
+      ns.Roster.Refresh()
       return ns.Print(s.debugEvents and L.DEBUG_EVENTS_ON or L.DEBUG_EVENTS_OFF)
     end
-    ns.Debug()
+    local fn = ns[DEBUG[rest] or "Debug"]
+    if fn then fn() end
   end,
 }
 
@@ -141,7 +201,7 @@ SLASH_SOTHIRSTY2 = "/thirsty"
 function ns.RunCommand(input)
   local cmd, rest = (input or ""):match("^%s*(%S*)%s*(.-)%s*$")
   cmd = cmd:lower()
-  if cmd == "" then cmd = "status" end -- opens Options once that window exists (Phase 6)
+  if cmd == "" then cmd = "options" end
   local fn = COMMANDS[cmd]
   if not fn then return ns.Print(L.UNKNOWN_COMMAND:format(cmd)) end
   fn(rest)
@@ -150,7 +210,10 @@ SlashCmdList.SOTHIRSTY = ns.RunCommand
 
 -- ---------------------------------------------------------------- addon compartment
 
-function SoThirsty_OnAddonCompartmentClick() ns.PrintStatus() end
+function SoThirsty_OnAddonCompartmentClick(_, button)
+  if button == "RightButton" then return ns.Button.Say("thirsty") end
+  openOptions()
+end
 function SoThirsty_OnAddonCompartmentEnter(_, menuButton)
   GameTooltip:SetOwner(menuButton, "ANCHOR_LEFT")
   GameTooltip:AddLine(L.ADDON)
@@ -168,8 +231,15 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function(self, event, name)
   if event == "ADDON_LOADED" and name == addonName then
-    SoThirstyDB = applyDefaults(SoThirstyDB or {}, DB_DEFAULTS)
+    local db = SoThirstyDB or {}
+    -- Design v1 kept an output grid, sounds and a banner; v2 keeps levels, colors and look.
+    if db.settings and db.version ~= DB_VERSION then db.settings = ns.Levels.Migrate(db.settings) end
+    db.version = DB_VERSION
+    SoThirstyDB = applyDefaults(db, DB_DEFAULTS)
+    if ns.Curves then ns.Curves.Rebuild() end
+    ns.Combat.Start()
     ns.Roster.Start()
+    if ns.RegisterOptions then pcall(ns.RegisterOptions) end
     if not SoThirstyDB.welcomed then
       SoThirstyDB.welcomed = true
       C_Timer.After(6, function() ns.Print(L.WELCOME) end)

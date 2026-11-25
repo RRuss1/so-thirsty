@@ -1,14 +1,13 @@
--- Who's in the group, who's a healer, and their mana (spec Section 5).
--- Every addon user tracks every healer, so one copy of the addon covers the whole group.
+-- Who's in the group, who's a healer, and what the addon is allowed to know about them
+-- (spec Section 5). Mana is never read as a number: it's always secret on Forever.
 local _, ns = ...
 local L = ns.L
-local Levels = ns.Levels
 
 local Roster = {}
 ns.Roster = Roster
 
--- Tracked healers by GUID: { guid, unit, name, class, state, pct, why }. State survives
--- roster shuffles (units can change; GUIDs don't).
+-- Tracked healers by GUID: { guid, unit, name, class, drinking }. Units can change when the
+-- roster shuffles; GUIDs don't.
 local healers = {}
 local byUnit = {}  -- current unit token -> healer
 local count = 0
@@ -17,10 +16,6 @@ Roster.healers = healers
 local PARTY_UNITS = { "player", "party1", "party2", "party3", "party4" }
 local RAID_UNITS = {}
 for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
-
-local function manaType()
-  return Enum and Enum.PowerType and Enum.PowerType.Mana or 0
-end
 
 -- The unit tokens to scan, or nil when solo.
 function Roster.GroupUnits()
@@ -32,11 +27,8 @@ end
 function Roster.Count() return count end
 function Roster.ByUnit(unit) return byUnit[unit] end
 
--- The group is in combat if I am, or (combatScope "group") anyone is. Combat.lua (Phase 3)
--- replaces this with the event-driven version.
 function Roster.InCombat()
-  if ns.GroupInCombat then return ns.GroupInCombat() end
-  return InCombatLockdown() or UnitAffectingCombat("player") == true
+  return ns.Combat.Is()
 end
 
 -- ---------------------------------------------------------------- scanning
@@ -52,7 +44,7 @@ function Roster.Scan()
       if UnitExists(unit) then role = UnitGroupRolesAssigned(unit) end
       if not ns.IsSecret(role) and role == "HEALER" then guid = UnitGUID(unit) end
       if not ns.IsSecret(guid) and guid then
-        local h = healers[guid] or { guid = guid, state = Levels.NewState() }
+        local h = healers[guid] or { guid = guid, drinking = false }
         healers[guid] = h
         h.unit = unit
         h.name = UnitName(unit)
@@ -60,7 +52,7 @@ function Roster.Scan()
         h.class = nil
         if not ns.IsSecret(class) then h.class = class end
         byUnit[unit] = h
-        -- In a raid my own power events come as "player" as well as "raidN".
+        -- In a raid my own events come as "player" as well as "raidN".
         if unit ~= "player" and UnitIsUnit(unit, "player") then byUnit.player = h end
         seen[guid] = true
       end
@@ -72,45 +64,54 @@ function Roster.Scan()
   end
 end
 
--- A healer's mana percent, or nil and why not ("dead" | "offline" | "secret").
-function Roster.Read(h)
-  local unit = h.unit
-  local dead, online = UnitIsDeadOrGhost(unit), UnitIsConnected(unit)
-  if ns.IsSecret(dead) or ns.IsSecret(online) then return nil, "secret" end
-  if dead then return nil, "dead" end
-  if not online then return nil, "offline" end
-  local mana, max = UnitPower(unit, manaType()), UnitPowerMax(unit, manaType())
-  local pct = Levels.Pct(mana, max)
-  if not pct then return nil, "secret" end
-  return pct
+-- What the addon knows about one healer, for Levels.Holder / Levels.CanNudge. The table is
+-- reused; read it before the next call.
+local known = {}
+function Roster.Known(h)
+  local s = ns.Settings()
+  local dead, online = UnitIsDeadOrGhost(h.unit), UnitIsConnected(h.unit)
+  known.enabled = s.enabled and s.frames.enabled
+  known.zoneOk = ns.ZoneOk() and true or false
+  known.inCombat = ns.Combat.Is()
+  known.dead = not ns.IsSecret(dead) and dead == true
+  known.offline = not ns.IsSecret(online) and online == false
+  known.drinking = h.drinking == true
+  return known
 end
 
--- Reads one healer and runs the state machine. Results go to ns.OnLevelEvent (Phase 3).
-function Roster.Evaluate(h, inCombat)
-  local pct, why = Roster.Read(h)
-  h.pct, h.why = pct, why
-  if not pct then return end
-  local result = Levels.Update(h.state, pct, inCombat, ns.Settings())
-  if result and ns.OnLevelEvent then ns.OnLevelEvent(h, result) end
-end
-
-function Roster.EvaluateAll()
-  local inCombat = Roster.InCombat()
-  for _, h in pairs(healers) do Roster.Evaluate(h, inCombat) end
+-- Re-reads the drink buff for every healer. Nobody drinks in combat.
+function Roster.RefreshDrinking()
+  local inCombat = ns.Combat.Is()
+  for _, h in pairs(healers) do
+    h.drinking = not inCombat and ns.Drink.AuraMatch(h.unit) == true
+  end
 end
 
 -- ---------------------------------------------------------------- events
 
--- UNIT_POWER_UPDATE is coalesced: at most one evaluation per healer every 0.5 s (spec 13).
-local dirty = {}
+-- Mana and buff events are coalesced: at most one refresh per healer every 0.5 s (spec 13).
+local dirty, auraDirty = {}, {}
 local flushQueued = false
 local function flush()
   flushQueued = false
-  local inCombat = Roster.InCombat()
+  local inCombat = ns.Combat.Is()
   for guid in pairs(dirty) do
     dirty[guid] = nil
     local h = healers[guid]
-    if h then Roster.Evaluate(h, inCombat) end
+    if h then
+      if auraDirty[guid] then h.drinking = not inCombat and ns.Drink.AuraMatch(h.unit) == true end
+      ns.UpdateHealer(h)
+    end
+    auraDirty[guid] = nil
+  end
+end
+
+local function markDirty(h, aura)
+  dirty[h.guid] = true
+  if aura then auraDirty[h.guid] = true end
+  if not flushQueued then
+    flushQueued = true
+    C_Timer.After(0.5, flush)
   end
 end
 
@@ -128,54 +129,43 @@ local function checkRoleHint()
 end
 
 local frame = CreateFrame("Frame")
-local powerOn, flagsOn = false, false
+local unitEventsOn = false
+local UNIT_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_AURA", "UNIT_CONNECTION" }
 
--- Registers or drops the power (and debug) events to match the current state.
+-- Rescans, then registers or drops the unit events to match the current state.
 function Roster.Refresh()
   local s = ns.Settings()
   Roster.Scan()
-  local wantPower = s.enabled and count > 0
-  if wantPower ~= powerOn then
-    if wantPower then frame:RegisterEvent("UNIT_POWER_UPDATE") else frame:UnregisterEvent("UNIT_POWER_UPDATE") end
-    powerOn = wantPower
+  local want = s.enabled and count > 0 and (ns.ZoneOk() and true or false)
+  if want ~= unitEventsOn then
+    for _, event in ipairs(UNIT_EVENTS) do
+      if want then frame:RegisterEvent(event) else frame:UnregisterEvent(event) end
+    end
+    unitEventsOn = want
   end
-  -- UNIT_FLAGS is only watched for /sot debug events until Combat.lua needs it (spec 16 Q5).
-  local wantFlags = s.debugEvents and Roster.GroupUnits() ~= nil
-  if wantFlags ~= flagsOn then
-    if wantFlags then frame:RegisterEvent("UNIT_FLAGS") else frame:UnregisterEvent("UNIT_FLAGS") end
-    flagsOn = wantFlags
-  end
-  if wantPower then Roster.EvaluateAll() end
+  ns.Combat.Refresh()
+  Roster.RefreshDrinking()
+  ns.UpdateAll()
 end
 
 local ROSTER_EVENTS = {
   "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "ROLE_CHANGED_INFORM", "PLAYER_ENTERING_WORLD",
-  "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+  "ZONE_CHANGED_NEW_AREA",
 }
 
 frame:SetScript("OnEvent", function(_, event, unit, powerType)
-  local s = ns.Settings()
-  if s.debugEvents and event ~= "UNIT_POWER_UPDATE" then
-    ns.Print(("|cff888888event|r %s %s %s"):format(event, tostring(unit), tostring(powerType)))
-    if event == "UNIT_FLAGS" and unit then
-      local c = UnitAffectingCombat(unit)
-      ns.Print(("  UnitAffectingCombat(%s) = %s"):format(unit, ns.IsSecret(c) and "<secret>" or tostring(c)))
-    end
-  end
   if event == "UNIT_POWER_UPDATE" then
     if powerType ~= "MANA" then return end
     local h = byUnit[unit]
-    if not h then return end
-    dirty[h.guid] = true
-    if not flushQueued then
-      flushQueued = true
-      C_Timer.After(0.5, flush)
-    end
-  elseif event == "UNIT_FLAGS" or event == "PLAYER_REGEN_DISABLED" then
-    return -- debug print only (above), until Combat.lua
-  elseif event == "PLAYER_REGEN_ENABLED" then
-    if powerOn then Roster.EvaluateAll() end
+    if h then markDirty(h, false) end
+  elseif event == "UNIT_AURA" then
+    local h = byUnit[unit]
+    if h and not ns.Combat.Is() then markDirty(h, true) end
+  elseif event == "UNIT_CONNECTION" then
+    local h = byUnit[unit]
+    if h then markDirty(h, false) end
   else
+    if ns.Settings().debugEvents then ns.Print(("|cff888888event|r %s %s"):format(event, tostring(unit))) end
     Roster.Refresh()
     C_Timer.After(5, checkRoleHint) -- roles often arrive a moment after the group forms
   end
@@ -189,32 +179,23 @@ end
 
 -- ---------------------------------------------------------------- status
 
-local function displayName(h)
+function Roster.DisplayName(h)
   if not h.name or ns.IsSecret(h.name) then return h.unit end
   local color = h.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[h.class]
   if color and color.colorStr then return ("|c%s%s|r"):format(color.colorStr, h.name) end
   return h.name
 end
 
--- One line per tracked healer (used by /sot status and the compartment tooltip).
+-- One line per tracked healer (used by /sot status and the compartment tooltip). No mana
+-- numbers: the game hides them.
 function ns.StatusLines()
   local lines = {}
   if not SoThirstyDB or not ns.Settings().enabled then return lines end
-  local cfg = ns.Settings()
   for _, h in pairs(healers) do
-    local pct, why = Roster.Read(h)
-    local mana, level, drink = L.STATUS_UNKNOWN, "", ""
-    if pct then
-      mana = L.STATUS_MANA:format(pct)
-      local current = Levels.Current(pct, cfg)
-      if current > 0 then level = L.STATUS_LEVEL:format(current, cfg.levels[current].pct) end
-      if ns.Drink.AuraMatch(h.unit) == true then drink = L.STATUS_DRINKING end
-    elseif why == "dead" then
-      mana = L.STATUS_DEAD
-    elseif why == "offline" then
-      mana = L.STATUS_OFFLINE
-    end
-    lines[#lines + 1] = L.STATUS_LINE:format(displayName(h), mana, level, drink)
+    local k = Roster.Known(h)
+    local state = k.dead and L.STATUS_DEAD or k.offline and L.STATUS_OFFLINE or k.drinking and L.STATUS_DRINKING
+      or L.STATUS_WATCHING
+    lines[#lines + 1] = L.STATUS_LINE:format(Roster.DisplayName(h), state)
   end
   table.sort(lines)
   return lines
@@ -225,7 +206,9 @@ function ns.PrintStatus()
   if not Roster.GroupUnits() then return ns.Print(L.STATUS_SOLO) end
   Roster.Scan()
   if count == 0 then return ns.Print(L.STATUS_NONE) end
+  Roster.RefreshDrinking()
   ns.Print(L.STATUS_HEADER:format(count))
   for _, line in ipairs(ns.StatusLines()) do DEFAULT_CHAT_FRAME:AddMessage(line) end
-  if Roster.InCombat() then DEFAULT_CHAT_FRAME:AddMessage("  " .. L.STATUS_COMBAT) end
+  if not ns.ZoneOk() then DEFAULT_CHAT_FRAME:AddMessage("  " .. L.STATUS_ZONE) end
+  if ns.Combat.Is() then DEFAULT_CHAT_FRAME:AddMessage("  " .. L.STATUS_COMBAT) end
 end
