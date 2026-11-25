@@ -8,6 +8,7 @@
 - `/sot status` and the addon compartment tooltip list each healer's mana, level and drinking state.
 - `/sot levels 50 30 10` sets the three levels (rejects a bad order).
 - Nothing is announced yet. Warnings come in Phase 3.
+- `/sot debug mana`: first in-game test showed mana is a secret value even out of combat, so this probes every official way to read it (spec 16 Q17).
 
 ## v0.1.0 — Skeleton (unreleased)
 

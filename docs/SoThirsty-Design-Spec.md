@@ -681,6 +681,17 @@ Answer each with a `/sot debug` subcommand in game. Record the answers here.
 14. Do `ColorPickerFrame:SetupColorPickerAndShow` and `AnimationGroup` alpha/scale animations work as on retail?
 15. Does `PlaySoundFile` play `.ogg` files from `Interface\AddOns\SoThirsty\Media\Custom\` (after a client restart)?
 16. Do the game textures in 9.7 exist on Forever (`UI-Background-Rock`, `UI-DialogBox-Background-Dark`, the drink icons, the slider templates)? A missing file shows as a blank or green square. If one is missing, swap in the `art/fallback/` version.
+17. **Blocker.** With `UnitPower` secret, is there any official, readable mana source (`UnitPowerPercent`, a `C_Secrets` predicate, a different argument)? Can a `StatusBar` take a secret mana value? Test with `/sot debug mana`. If nothing is readable, mana thresholds and chat lines can't work as designed, and the design has to change. Don't work around a secret (e.g. measuring bar texture widths): that defeats a deliberate Blizzard restriction.
+
+### Answers so far
+
+From `/sot debug`, client 1.60.1 build 71091 (16001), open world, out of combat, party of 2, no roles set:
+
+- **Q2:** `UnitPower(unit, Mana)` is **secret out of combat**, for party members **and for the player**. `UnitPower(unit)` is secret too. `UnitPowerMax` was readable for the player and secret for the party member. `UnitPowerType` is readable. Leads to Q17.
+- **Q5 (part):** `UnitAffectingCombat` is readable for party members out of combat.
+- **Q7 (part):** `LE_PARTY_CATEGORY_INSTANCE` exists (= 2).
+- `UnitGroupRolesAssigned`, `UnitGUID`, `UnitClass`, `UnitIsDeadOrGhost` and `UnitIsConnected` are readable. `UnitInRange` is secret.
+- Q1 still open: no role was set yet in that test.
 
 ---
 
