@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: So Thirsty
+## Notes: Tells your group when the healer is low on mana, out of combat, so the tank waits before pulling.
+## Author: Slac Jaw from RP-PVP
+## Version: @project-version@
+## SavedVariables: SoThirstyDB
+## IconTexture: Interface\AddOns\SoThirsty\Media\logo
+## AddonCompartmentFunc: SoThirsty_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: SoThirsty_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: SoThirsty_OnAddonCompartmentLeave
+
+Locales\enUS.lua
+Core.lua
+Levels.lua
+Roster.lua
+Drink.lua
+Debug.lua
+UI\Window.lua

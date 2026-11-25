@@ -1,0 +1,15 @@
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local packager output
+.release/
+
+# Claude Code local settings
+.claude/settings.local.json

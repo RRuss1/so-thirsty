@@ -1,0 +1,13 @@
+package-as: SoThirsty
+
+# The addon lives in a subfolder of the repo; ship only that folder.
+move-folders:
+  SoThirsty/addon/SoThirsty: SoThirsty
+
+manual-changelog: CHANGELOG.md
+
+ignore:
+  - docs
+  - art
+  - addon/tests
+  - "*.md"

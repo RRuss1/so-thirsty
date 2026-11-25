@@ -1,0 +1,25 @@
+name: Release Addon
+
+# Runs only when a version tag is pushed (git tag v0.1.0 && git push origin v0.1.0).
+# Needs the CF_API_TOKEN secret and ## X-Curse-Project-ID in the TOC (spec Section 15, Phase 7).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: BigWigsMods/packager@v2
+        with:
+          args: ""
