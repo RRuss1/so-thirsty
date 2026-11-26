@@ -41,6 +41,7 @@ end
 -- Rebuilds every curve from the settings. Called at load and when a level or color changes.
 function Curves.Rebuild()
   for k in pairs(built) do built[k] = nil end
+  if Curves.ForgetClasses then Curves.ForgetClasses() end
   Curves.error = nil
   if not Curves.Available() then return end
   local cfg = ns.Settings()
@@ -95,4 +96,24 @@ function Curves.All(unit)
   local ok3, p3 = Curves.Value(unit, "pip3")
   if not (okF and okC and okA and okL and ok1 and ok2 and ok3) then return false end
   return true, fraction, r, g, b, alpha, low, p1, p2, p3
+end
+
+-- The same color curve, but ending in a class color above level 1 (the flask edge: class
+-- color while the healer is fine, level colors as they run dry). One curve per class,
+-- built on first use and dropped by Rebuild. Returns ok, then secret r, g, b.
+local byClass = {}
+function Curves.ClassColor(unit, class, color)
+  if not built.color then return false end
+  local curve = byClass[class]
+  if not curve then
+    local ok, made = pcall(build, ns.Levels.ColorPoints(ns.Settings(), { color.r, color.g, color.b }), true)
+    if not ok then return false end
+    curve = made
+    byClass[class] = curve
+  end
+  return pcall(colorOf, unit, curve)
+end
+
+function Curves.ForgetClasses()
+  for k in pairs(byClass) do byClass[k] = nil end
 end

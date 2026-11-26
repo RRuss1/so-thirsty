@@ -6,11 +6,11 @@ The first group test showed the frame glow hiding under aggro borders, and the o
 
 - **Mana bar color:** the healer's own mana bar on their frame turns yellow, orange, then red below level 1.
 - **Pips:** dots on the healer's frame, one per level reached.
-- **Flask:** a flask per healer anywhere on screen; hidden while they're fine, it fades in and drains.
+- **Flask:** a flask per healer anywhere on screen, always showing like a mana bar (or only when low, as an option). It drains with their mana; its edge goes from class color to the level colors. Has an opacity setting.
 - **After-fight banner:** 5 seconds after a fight, a low healer's name in their level color. Skipped on chain pulls, after a wipe and for a drinking healer.
-- **Screen-edge glow:** a soft haze on the screen edges. Off by default.
+- **Screen-edge glow:** a soft haze on the screen edges, in the level colors or one color of your own. Off by default.
 - The flask, banner and screen glow work with party frames hidden.
-- **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left, one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
+- **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left (General first), one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
 - **Removed:** tint, glow, border, corners and bar-strip looks; the pulse, nudge brighten, ready tick, range fade and grey edge; the thirst meter; the Ready level; color-band modes; feel presets; and all their settings. `/sot meter` is gone; `/sot bar`, `pips`, `flask`, `banner`, `glow` are new.
 - Old settings are migrated: levels, colors, the drink button, zones and the minimap button carry over.
 - `/sot debug looks` checks the three things not yet proven on this client (spec 16 Q25–Q27). The old probes (`debug mana`, `curve`, `swatch`, `window`, `party`) are removed; their answers are in the spec.

@@ -84,10 +84,15 @@ function Vignette.Update()
     return layer
   end
 
+  -- One color of the player's choosing, or the level colors.
+  local own = s.vignette.custom and s.vignette.color
+
   if demo then
     local layer = use()
     layer:SetAlpha(strength)
-    paint(layer, Levels.Plain(demo, s))
+    local fraction, r, g, b, a = Levels.Plain(demo, s)
+    if own then r, g, b = own[1], own[2], own[3] end
+    paint(layer, fraction, r, g, b, a)
   else
     for _, h in pairs(ns.Roster.healers) do
       if count < MAX then
@@ -97,6 +102,7 @@ function Vignette.Update()
           if ok then
             local layer = use()
             layer:SetAlpha(alpha * strength)
+            if own then r, g, b = own[1], own[2], own[3] end
             paint(layer, fraction, r, g, b, a)
           end
         end

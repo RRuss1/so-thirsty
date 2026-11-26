@@ -164,6 +164,9 @@ do
   near("  yellow at level 1", p.points[4][3], 1)
   check("  water blue just above level 1", p.points[5][1] > 0.5 and p.points[5][1] < 0.51)
   near("  and it's the fine color", p.points[5][4], Levels.FINE[3])
+  local classy = Levels.ColorPoints(c, { 0.2, 0.4, 0.6 })
+  check("ColorPoints with a class color ends in it", #classy.points == 5 and classy.points[5][2] == 0.2 and classy.points[5][4] == 0.6)
+  near("  and keeps the level colors below", classy.points[4][3], 1)
   near("ColorAt 20% is a red/orange blend", select(2, Levels.ColorAt(20, c)), 0.25)
   near("ColorAt 80% is water blue", select(3, Levels.ColorAt(80, c)), Levels.FINE[3])
 end
@@ -298,6 +301,8 @@ do
   check("defaults: bar, pips, flask and banner on; screen glow off",
     s.bar.enabled and s.pips.enabled and s.flask.enabled and s.banner.enabled and not s.vignette.enabled)
   eq("defaults: banner 5 s after a fight", s.banner.delay, 5)
+  check("defaults: the flask always shows, at full opacity", s.flask.whenLow == false and s.flask.alpha == 100)
+  check("defaults: the screen glow uses the level colors", s.vignette.custom == false and #s.vignette.color == 4)
   eq("ZoneOk in a dungeon", (ns.ZoneOk()), true)
   zone = "pvp"
   local ok, pvp = ns.ZoneOk()

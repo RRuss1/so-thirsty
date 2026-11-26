@@ -1,6 +1,7 @@
 -- The draining flask (spec 8.3): one flask per healer, off the party frames, so it works
--- even with party frames hidden. Invisible while mana is fine; as the healer runs dry it
--- fades in, the liquid drains, and its edge shifts from blue to red.
+-- even with party frames hidden. A stand-in for a mana bar: it always shows (unless set to
+-- "only when low"), the liquid drains with their mana, and its edge shifts from the
+-- healer's class color to the level colors as they run dry.
 -- All game art. The game does the fading, draining and coloring from the hidden mana value.
 local _, ns = ...
 local L = ns.L
@@ -140,16 +141,22 @@ function Flask.Update()
     if p then row:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else row:SetPoint("CENTER", 0, -150) end
   end
 
+  -- By default the flask always shows, like a mana bar you can read at a glance. With
+  -- "only when low" it stays invisible until mana drops below level 1.
+  local always = not s.flask.whenLow
+  local opacity = s.flask.alpha / 100
   local count = 0
   if showDemo then
     count = 1
     local item = items[1] or buildItem(1)
     item:Show()
-    item:SetAlpha(showDemo.drinking and Levels.DRINK_DIM or 1)
+    item:SetAlpha((showDemo.drinking and Levels.DRINK_DIM or 1) * opacity)
     item.drop:SetShown(showDemo.drinking == true)
     item.name:SetText(L.PREVIEW_NAME)
     item.name:SetShown(s.flask.names and namesWork)
-    paint(item, Levels.Plain(showDemo.pct, s))
+    local fraction, r, g, b, a, low = Levels.Plain(showDemo.pct, s)
+    if always then a, low = 1, 1 end
+    paint(item, fraction, r, g, b, a, low)
   else
     for i in ipairs(sorted) do sorted[i] = nil end
     for _, h in pairs(ns.Roster.healers) do sorted[#sorted + 1] = h end
@@ -159,13 +166,25 @@ function Flask.Update()
       local item = items[i] or buildItem(i)
       item:Show()
       local alpha, drinking = Levels.Holder(ns.Roster.Known(h))
-      item:SetAlpha(alpha)
+      item:SetAlpha(alpha * opacity)
       item.drop:SetShown(drinking)
       item.name:SetText(ns.Roster.DisplayName(h))
       item.name:SetShown(s.flask.names and namesWork)
       if alpha > 0 then
         local ok, fraction, r, g, b, a, low = Curves.All(h.unit)
-        if ok then paint(item, fraction, r, g, b, a, low) else item:SetAlpha(0) end
+        if ok then
+          -- The edge: the healer's class color while they're fine, level colors when low.
+          local class = h.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[h.class]
+          if class then
+            local okC, cr, cg, cb = Curves.ClassColor(h.unit, h.class, class)
+            if okC then r, g, b = cr, cg, cb end
+          end
+          -- Always showing: plain 1s replace the mana-driven fade (no test on a secret).
+          if always then a, low = 1, 1 end
+          paint(item, fraction, r, g, b, a, low)
+        else
+          item:SetAlpha(0)
+        end
       end
     end
   end

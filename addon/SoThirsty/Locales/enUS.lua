@@ -108,20 +108,23 @@ ns.L = {
   NOTE_LEVELS = "Nothing shows above level 1. Below it, every indicator uses these colors, blending from one level to the next.",
 
   -- options: the indicators
-  OPT_BAR_ALPHA = "Opacity",
+  OPT_OPACITY = "Opacity",
   NOTE_BAR = "Recolors the healer's own mana bar on their party or raid frame: yellow, orange, then red. Needs party frames showing.",
   OPT_CORNER = "Corner",
   CORNERS = { TOPRIGHT = "Top right", TOPLEFT = "Top left", BOTTOMRIGHT = "Bottom right", BOTTOMLEFT = "Bottom left" },
   NOTE_PIPS = "Three dots on the healer's frame: one below level 1, two below level 2, three below level 3. Needs party frames showing.",
+  OPT_FLASK_WHEN_LOW = "Hide it while their mana is fine",
   OPT_FLASK_NAMES = "Show the healer's name under it",
-  NOTE_FLASK = "A flask per healer, anywhere on your screen. Hidden while they're fine; it fades in and drains as they run dry. Works without party frames.",
+  NOTE_FLASK = "A flask per healer, anywhere on your screen: a mana bar you can read at a glance. The liquid drains with their mana; the edge goes from their class color to the level colors.",
   OPT_BANNER_DELAY = "How long after the fight",
   OPT_BANNER_HOLD = "How long it stays",
   NOTE_BANNER = "Once after each fight, a low healer's name appears in their level color. Skipped on chain pulls, after a wipe, and for a healer who's drinking.",
   OPT_GLOW_STRENGTH = "Strength",
   OPT_GLOW_WIDTH = "Width",
   WIDTHS = { thin = "Thin", medium = "Medium", wide = "Wide" },
-  NOTE_GLOW = "A soft haze on the edges of your screen as a healer runs dry. Hard to miss, so it's off unless you turn it on.",
+  OPT_GLOW_CUSTOM = "Use one color of my own",
+  OPT_GLOW_COLOR = "My color",
+  NOTE_GLOW = "A soft haze on the edges of your screen as a healer runs dry. It uses the level colors unless you pick your own. Off unless you turn it on.",
 
   -- options: drink button
   OPT_BUTTON_SHOW = "Show the button",

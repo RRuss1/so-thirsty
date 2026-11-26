@@ -14,9 +14,9 @@ Each one is a single switch. Use any mix.
 |---|---|---|
 | **Mana bar** | The healer's own mana bar on their party/raid frame turns yellow, orange, then red | on |
 | **Pips** | Dots on the healer's frame: one below 50%, two below 30%, three below 10% | on |
-| **Flask** | A flask on your screen for each healer. Hidden while they're fine; it fades in and drains as they run dry | on |
+| **Flask** | A flask on your screen for each healer, like a mana bar: the liquid drains with their mana, and the edge goes from their class color to yellow, orange, red. Can be set to hide while they're fine | on |
 | **Banner** | Five seconds after a fight, a low healer's name appears in their level color for a few seconds | on |
-| **Screen glow** | A soft haze on the edges of your screen as a healer runs dry | off |
+| **Screen glow** | A soft haze on the edges of your screen as a healer runs dry, in the level colors or one color you pick | off |
 
 - A healer who is **drinking** shows dimmed, with a drink mark.
 - Everything hides **in combat**, and in battlegrounds and arenas.

@@ -13,7 +13,7 @@ local ROW_H = 32
 local window
 local refreshers = {}
 local preview = { pct = 40, drinking = false }
-local currentTab = "levels"
+local currentTab = "general"
 local playing = false
 
 local function S() return ns.Settings() end
@@ -167,6 +167,12 @@ function build.cycle(parent, row, y)
   end, ROW_H
 end
 
+-- { "color", label, getColor, getDefault }
+function build.color(parent, row, y)
+  label(parent, row[2], y)
+  return swatch(parent, COL_W, y, row[3], row[4]), ROW_H
+end
+
 -- { "level", label, index }: where the level starts (steps of 10) and its color.
 local function setThreshold(index, value)
   local s = S()
@@ -264,6 +270,22 @@ local placeRow = { "buttons", { L.OPT_PLACE, togglePlacing, 190 } }
 -- { key, tab title, rows }
 local function tabList()
   return {
+    { "general", L.TAB_GENERAL, {
+      { "head", L.TAB_GENERAL },
+      check(L.OPT_ENABLED, S, "enabled"),
+      check(L.OPT_ZONE_DUNGEON, zones, "dungeon"),
+      check(L.OPT_ZONE_RAID, zones, "raid"),
+      check(L.OPT_ZONE_WORLD, zones, "world"),
+      cycle(L.OPT_COMBAT_SCOPE, S, "combatScope", { "group", "me" }, L.COMBAT_SCOPE),
+      check(L.OPT_ROLE_HINT, S, "roleHint"),
+      { "check", L.OPT_MINIMAP, function() return not S().minimap.hide end,
+        function(v)
+          S().minimap.hide = not v
+          ns.SetupMinimap()
+        end },
+      step(L.OPT_GHOST, S, "ghost", 0, 100, 5, "%"),
+      { "buttons", { L.OPT_RESET_ALL, resetAll, 120 }, { L.OPT_DEBUG, function() ns.Debug() end, 120 } },
+    } },
     { "levels", L.TAB_LEVELS, {
       { "head", L.TAB_LEVELS },
       { "level", L.OPT_LEVEL1, 1 },
@@ -276,7 +298,7 @@ local function tabList()
     { "bar", L.TAB_BAR, {
       { "head", L.TAB_BAR },
       check(L.OPT_ON, barCfg, "enabled"),
-      step(L.OPT_BAR_ALPHA, barCfg, "alpha", 40, 100, 10, "%"),
+      step(L.OPT_OPACITY, barCfg, "alpha", 40, 100, 10, "%"),
       { "note", L.NOTE_BAR, 60 },
     } },
     { "pips", L.TAB_PIPS, {
@@ -289,6 +311,8 @@ local function tabList()
     { "flask", L.TAB_FLASK, {
       { "head", L.TAB_FLASK },
       check(L.OPT_ON, flaskCfg, "enabled"),
+      check(L.OPT_FLASK_WHEN_LOW, flaskCfg, "whenLow"),
+      step(L.OPT_OPACITY, flaskCfg, "alpha", 20, 100, 10, "%"),
       step(L.OPT_SIZE, flaskCfg, "scale", 60, 200, 10, "%"),
       check(L.OPT_FLASK_NAMES, flaskCfg, "names"),
       placeRow,
@@ -308,6 +332,9 @@ local function tabList()
       check(L.OPT_ON, glowCfg, "enabled"),
       step(L.OPT_GLOW_STRENGTH, glowCfg, "strength", 10, 100, 5, "%"),
       cycle(L.OPT_GLOW_WIDTH, glowCfg, "width", Theme.GLOW_ORDER, L.WIDTHS),
+      check(L.OPT_GLOW_CUSTOM, glowCfg, "custom"),
+      { "color", L.OPT_GLOW_COLOR, function() return glowCfg().color end,
+        function() return ns.DB_DEFAULTS.settings.vignette.color end },
       { "note", L.NOTE_GLOW, 60 },
     } },
     { "button", L.TAB_BUTTON, {
@@ -324,22 +351,6 @@ local function tabList()
       { "note", function() return L.OPT_LINE_PREVIEW:format(ns.Button.Line("thirsty")) end, 30 },
       { "buttons", { L.OPT_MACRO, function() ns.Button.MakeMacros() end, 190 } },
       { "note", L.NOTE_BUTTON, 60 },
-    } },
-    { "general", L.TAB_GENERAL, {
-      { "head", L.TAB_GENERAL },
-      check(L.OPT_ENABLED, S, "enabled"),
-      check(L.OPT_ZONE_DUNGEON, zones, "dungeon"),
-      check(L.OPT_ZONE_RAID, zones, "raid"),
-      check(L.OPT_ZONE_WORLD, zones, "world"),
-      cycle(L.OPT_COMBAT_SCOPE, S, "combatScope", { "group", "me" }, L.COMBAT_SCOPE),
-      check(L.OPT_ROLE_HINT, S, "roleHint"),
-      { "check", L.OPT_MINIMAP, function() return not S().minimap.hide end,
-        function(v)
-          S().minimap.hide = not v
-          ns.SetupMinimap()
-        end },
-      step(L.OPT_GHOST, S, "ghost", 0, 100, 5, "%"),
-      { "buttons", { L.OPT_RESET_ALL, resetAll, 120 }, { L.OPT_DEBUG, function() ns.Debug() end, 120 } },
     } },
   }
 end

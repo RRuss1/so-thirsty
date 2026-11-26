@@ -74,15 +74,17 @@ end
 
 -- Curve points are on the 0-1 scale: { type = "linear" | "step", points = { ... } }.
 
--- Color: { x, r, g, b }. Level colors below level 1, water blue just above it.
-function Levels.ColorPoints(cfg)
+-- Color: { x, r, g, b }. Level colors below level 1; just above it, `fine` (water blue
+-- unless another color is given, such as a class color).
+function Levels.ColorPoints(cfg, fine)
   local lv = cfg.levels
+  fine = fine or Levels.FINE
   local points = { { 0, Levels.ColorAt(0, cfg) } }
   for i = 3, 1, -1 do
     local c = lv[i].color
     points[#points + 1] = { lv[i].pct / 100, c[1], c[2], c[3] }
   end
-  points[#points + 1] = { lv[1].pct / 100 + EPS, Levels.FINE[1], Levels.FINE[2], Levels.FINE[3] }
+  points[#points + 1] = { lv[1].pct / 100 + EPS, fine[1], fine[2], fine[3] }
   return { type = "linear", points = points }
 end
 

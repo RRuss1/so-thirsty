@@ -122,7 +122,7 @@ Interface 16001; Title "So Thirsty"; SavedVariables `SoThirstyDB` (account-wide)
 No WoW API. `Curves.lua` turns the point lists into real curves. Points are on the 0–1 scale.
 
 - `Validate(levels)` → `true`, or `false` plus `"RANGE"` / `"ORDER"`.
-- `ColorPoints(cfg)` → linear color curve: level 3's color at 0 and at level 3, level 2's, level 1's, then water blue just above level 1.
+- `ColorPoints(cfg, fine)` → linear color curve: level 3's color at 0 and at level 3, level 2's, level 1's, then `fine` just above level 1 (water blue unless a class color is passed).
 - `AlphaPoints(cfg)` → the fade for the flask and screen glow: 1 at level 3 and below, down to `FAINT` (0.35) just under level 1, then 0 at level 1 and above.
 - `LowPoints(cfg)` → step: 1 below level 1, 0 at and above (the bar color and banner text: solid on or off).
 - `PipPoints(cfg, i)` → step: 1 below level `i`, 0 at and above.
@@ -182,10 +182,11 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 
 ### 8.3 Draining flask (`UI/Flask.lua`, `settings.flask`, on by default)
 
-- One flask per healer in a row, anywhere on screen. Works with party frames hidden.
-- Built from a game potion icon: a dark, colorless copy behind (the empty flask); the same icon in color as a **vertical `StatusBar`** filled by `Curves.Fraction`, so the liquid drains (Q26); a 2 px edge colored by the color curve. Every texture's alpha comes from the fade curve, so the flask is invisible while mana is fine and fades in as it drops.
-- The healer's name underneath, alpha from `low` (Q27; dropped if the client refuses).
-- Options: size, show names. Placed with "Show it to place it" / `/sot move`.
+- One flask per healer in a row, anywhere on screen. Works with party frames hidden. It is a stand-in for a mana bar: by default it **always shows** (out of combat), full or not.
+- Built from a game potion icon: a dark, colorless copy behind (the empty flask); the same icon in color as a **vertical `StatusBar`** filled by `Curves.Fraction`, so the liquid drains (Q26); a 2 px edge that is the healer's **class color** while they are fine and the level colors below level 1 (`Curves.ClassColor`: the color curve with the class color as its "fine" end, one cached per class).
+- The healer's name underneath, class-colored.
+- With `flask.whenLow` on, it goes back to hiding while mana is fine: every texture's alpha comes from the fade curve and the name's from `low` (Q27; the name is dropped if the client refuses).
+- Options: only when low, opacity (20–100%), size, show names. Placed with "Show it to place it" / `/sot move`.
 
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
@@ -198,7 +199,8 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 
 - Four soft strips along the screen edges (the `glow-edge-*.tga` art, stretched), strata BACKGROUND. One layer per healer, up to 4; each colored by the color curve and faded by the fade curve, so the thirstiest shows through without any comparison.
 - Layer alpha = known alpha × `vignette.strength`.
-- Options: strength (10–100%), width (thin / medium / wide).
+- `vignette.custom` swaps the level colors for one color of the player's own (`vignette.color`, from the color picker); the fade still comes from mana.
+- Options: strength (10–100%), width (thin / medium / wide), use my own color + the color.
 
 ### 8.6 The drink button (`Button.lua`, `settings.button`)
 
@@ -220,7 +222,7 @@ v2's frame looks (tint, glow, border, corners, bar strip), the pulse, the nudge 
 
 ### 9.1 Colors
 
-- Every color is a swatch that opens the game's `ColorPickerFrame`, with a **Reset** button beside it. That's the three level colors.
+- Every color is a swatch that opens the game's `ColorPickerFrame`, with a **Reset** button beside it: the three level colors and the screen glow's own color.
 - **Color presets** fill all three: Classic (yellow / orange / red), Water (light blue / blue / violet), Color-blind safe (yellow / orange / magenta). Picking a color by hand switches the preset to Custom.
 
 ### 9.2 Preview
@@ -272,9 +274,9 @@ settings = {
   palette = "classic",            -- "classic" | "water" | "colorblind" | "custom"
   bar = { enabled = true, alpha = 100 },
   pips = { enabled = true, size = "medium", corner = "TOPRIGHT" },
-  flask = { enabled = true, scale = 100, names = true },          -- + point once dragged
+  flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false },  -- + point once dragged
   banner = { enabled = true, delay = 5, hold = 5, scale = 100 },  -- + point once dragged
-  vignette = { enabled = false, strength = 35, width = "medium" },
+  vignette = { enabled = false, strength = 35, width = "medium", custom = false, color = { 0.31, 0.76, 0.97, 1 } },
   button = { show = "healer", party = true, raid = true, instance = true, prefix = true },
   zones = { dungeon = true, raid = true, world = true },
   combatScope = "group",          -- "group" | "me"
@@ -293,14 +295,14 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 
 | Tab | Options |
 |---|---|
+| **General** (first) | On/off; the three zones; counts as "in combat"; role hint; minimap button; window art strength; Reset all; Debug info |
 | **Levels** | The three levels (threshold + color each); color preset |
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
-| **Flask** | Show this; size; show names; show it to place it |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; show it to place it |
 | **Banner** | Show this; how long after the fight; how long it stays; size; show it to place it |
-| **Screen glow** | Show this; strength; width |
+| **Screen glow** | Show this; strength; width; use my own color; the color |
 | **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; the two lines; make macros |
-| **General** | On/off; the three zones; counts as "in combat"; role hint; minimap button; window art strength; Reset all; Debug info |
 
 - **Save / Undo changes.** A change shows at once, on the preview and for real, so it can be judged. It only sticks on **Save**. **Undo changes** returns to the last save. Closing with unsaved changes undoes them and says so in chat. Where things were dragged to always sticks. Slash commands apply at once.
 - Also reachable from Esc > Options > AddOns.
