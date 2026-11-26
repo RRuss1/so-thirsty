@@ -553,6 +553,11 @@ local function buildWindow()
       ns.Print(L.OPT_DISCARDED)
     end
     saved = nil
+    -- Placing ends with the window, so no grab plates are left on screen.
+    if ns.unlocked then
+      ns.unlocked = false
+      ns.UpdateAll()
+    end
     ns.Flask.Demo(nil)
     ns.Vignette.Demo(nil)
     ns.Banner.Demo(nil)

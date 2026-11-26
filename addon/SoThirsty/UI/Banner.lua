@@ -96,9 +96,12 @@ local function stopTimer()
   end
 end
 
+local function isOn(s) return s.enabled and s.banner.enabled end
+
+-- While placing (and the banner is on), the sample stays up to be dragged.
 function Banner.Hide()
   stopTimer()
-  if frame and not ns.unlocked then frame:Hide() end
+  if frame and not (ns.unlocked and isOn(ns.Settings())) then frame:Hide() end
 end
 
 -- A stand-in line at a plain mana percent (the Options preview and placing).
@@ -144,7 +147,7 @@ end
 function Banner.Demo(pct)
   if not UIParent then return end
   local s = ns.Settings()
-  if not pct then return Banner.Hide() end
+  if not pct or not isOn(s) then return Banner.Hide() end
   place(s, ns.unlocked == true)
   showSample(s, pct)
   stopTimer()
@@ -155,13 +158,17 @@ end
 function Banner.Refresh()
   if not UIParent then return end
   local s = ns.Settings()
-  if ns.unlocked then
+  -- Switched off means nothing of it shows, placing or not.
+  if ns.unlocked and isOn(s) then
     place(s, true)
     stopTimer()
     showSample(s, 25)
   elseif frame then
     frame:EnableMouse(false)
     frame.plate:Hide()
-    if ns.Combat.Is() or not s.banner.enabled or not hideTimer then frame:Hide() end
+    if ns.Combat.Is() or not isOn(s) or not hideTimer then
+      stopTimer()
+      frame:Hide()
+    end
   end
 end

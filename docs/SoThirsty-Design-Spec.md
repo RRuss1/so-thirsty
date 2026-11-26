@@ -194,6 +194,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 - If the client won't color or fade text from hidden values (Q27), the name is dropped and the icon and underline still show.
 - Our own frame. Up to 8 lines.
 - Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size. Placed like the flask.
+- **Placing** (`/sot move`, or "Place it" on the Flask and Banner tabs) shows a sample with a purple plate to drag. It ends on a second click, `/sot lock`, or when the Options window closes. An indicator that is switched off shows nothing, placing or not.
 
 ### 8.5 Screen-edge glow (`UI/Vignette.lua`, `settings.vignette`, **off** by default)
 
@@ -299,8 +300,8 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | **Levels** | The three levels (threshold + color each); color preset |
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
-| **Flask** | Show this; hide while mana is fine; opacity; size; show names; show it to place it |
-| **Banner** | Show this; how long after the fight; how long it stays; size; show it to place it |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; place it |
+| **Banner** | Show this; how long after the fight; how long it stays; size; place it |
 | **Screen glow** | Show this; strength; width; use my own color; the color |
 | **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; the two lines; make macros |
 

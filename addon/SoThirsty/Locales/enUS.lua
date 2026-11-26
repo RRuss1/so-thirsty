@@ -40,7 +40,7 @@ ns.L = {
   -- /sot ghost, move
   GHOST_USAGE = "Usage: /sot ghost 35 (0 to 100; 0 turns the background art off).",
   GHOST_SET = "Window background art: %d%%.",
-  MOVE_ON = "Placing: the flask, the banner and the drink button are showing. Drag them, then type /sot lock.",
+  MOVE_ON = "Placing: drag the flask, the banner and the drink button by their purple plates. Click the button again, close Options, or type /sot lock when done.",
   MOVE_OFF = "Done placing.",
 
   -- /sot status
@@ -95,7 +95,7 @@ ns.L = {
   OPT_ON = "Show this",
   OPT_SIZE = "Size",
   OPT_RESET = "Reset",
-  OPT_PLACE = "Show it to place it",
+  OPT_PLACE = "Place it (click again when done)",
   SIZES = { small = "Small", medium = "Medium", large = "Large" },
   SECONDS = { [3] = "3 seconds", [5] = "5 seconds", [8] = "8 seconds", [10] = "10 seconds" },
 
