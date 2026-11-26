@@ -13,7 +13,8 @@ local WIDTH, LINE, MAX_LINES = 260, 26, 8
 local frame
 local lines = {}
 local hideTimer
-local textWorks = true   -- set false if this client won't color or fade text from hidden values
+local samplePct = 25     -- the mana the placing sample shows (the preview can set it)
+local textWorks = true  -- set false if this client won't color or fade text from hidden values
 
 local function buildLine(i)
   local line = CreateFrame("Frame", nil, frame)
@@ -147,7 +148,11 @@ end
 function Banner.Demo(pct)
   if not UIParent then return end
   local s = ns.Settings()
-  if not pct or not isOn(s) then return Banner.Hide() end
+  if not pct or not isOn(s) then
+    samplePct = 25
+    return Banner.Hide()
+  end
+  samplePct = pct
   place(s, ns.unlocked == true)
   showSample(s, pct)
   stopTimer()
@@ -162,7 +167,7 @@ function Banner.Refresh()
   if ns.unlocked and isOn(s) then
     place(s, true)
     stopTimer()
-    showSample(s, 25)
+    showSample(s, samplePct)
   elseif frame then
     frame:EnableMouse(false)
     frame.plate:Hide()

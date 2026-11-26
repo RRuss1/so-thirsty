@@ -221,6 +221,18 @@ local function attach(h, list)
   Frames.Layout(holder, (Frames.PowerBar(target)))
 end
 
+-- The on-screen preview: healers' real frames show a plain sample percent, out of combat.
+local demo
+local demoKnown = { enabled = true, zoneOk = true, inCombat = false, dead = false, offline = false }
+
+-- Frames.Demo(40, drinking) starts or updates it; Frames.Demo(nil) ends it.
+function Frames.Demo(pct, drinking)
+  if not pct and not demo then return end
+  demo = pct
+  demoKnown.drinking = drinking and true or false
+  for _, h in pairs(ns.Roster.healers) do Frames.Update(h) end
+end
+
 -- Repaints one healer.
 function Frames.Update(h)
   local holder = holders[h.guid]
@@ -228,6 +240,12 @@ function Frames.Update(h)
   local target = holder.target
   if not target or not target:IsVisible() then return holder:Hide() end
   holder:Show()
+  if demo and not InCombatLockdown() then
+    local cfg = ns.Settings()
+    demoKnown.enabled = cfg.enabled
+    Frames.SetKnown(holder, Levels.Holder(demoKnown))
+    return Frames.Paint(holder, Levels.Plain(demo, cfg))
+  end
   local alpha, drinking = Levels.Holder(ns.Roster.Known(h))
   Frames.SetKnown(holder, alpha, drinking)
   if alpha <= 0 then return end

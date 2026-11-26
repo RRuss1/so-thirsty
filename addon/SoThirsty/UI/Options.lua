@@ -15,6 +15,8 @@ local refreshers = {}
 local preview = { pct = 40, drinking = false }
 local currentTab = "general"
 local playing = false
+local onScreen = false       -- the window is tucked away and the real indicators show samples
+local toggleScreen           -- defined below (it needs Save / Undo)
 
 local function S() return ns.Settings() end
 local function changed() ns.Apply() end
@@ -261,11 +263,7 @@ local function resetAll()
   ns.Print(L.OPT_RESET_DONE)
 end
 
-local function togglePlacing()
-  ns.unlocked = not ns.unlocked
-  ns.Print(ns.unlocked and L.MOVE_ON or L.MOVE_OFF)
-end
-local placeRow = { "buttons", { L.OPT_PLACE, togglePlacing, 190 } }
+local placeRow = { "buttons", { L.OPT_PLACE, function() toggleScreen() end, 210 } }
 
 -- { key, tab title, rows }
 local function tabList()
@@ -374,21 +372,44 @@ local function paintPreview()
   preview.bar:SetValue(pct / 100)
   preview.text:SetText(pct .. "%")
 
-  local open = window and window:IsShown()
-  if open and (playing or currentTab == "flask") then
-    -- On its own tab, three stand-ins show how several healers line up.
-    ns.Flask.Demo(pct, preview.drinking, currentTab == "flask" and 3 or 1)
+  -- On screen, every indicator shows the sample where it really sits, the unit frames too.
+  local open = window and (window:IsShown() or onScreen)
+  local all = playing or onScreen
+  if open and (all or currentTab == "flask") then
+    -- Three stand-ins show how several healers line up.
+    ns.Flask.Demo(pct, preview.drinking, (onScreen or currentTab == "flask") and 3 or 1)
   else
     ns.Flask.Demo(nil)
   end
-  if open and (playing or currentTab == "glow") then ns.Vignette.Demo(pct) else ns.Vignette.Demo(nil) end
-  if open and currentTab == "banner" and not playing then ns.Banner.Demo(pct) end
+  if open and (all or currentTab == "glow") then ns.Vignette.Demo(pct) else ns.Vignette.Demo(nil) end
+  if open and (onScreen or (currentTab == "banner" and not playing)) then ns.Banner.Demo(pct) end
+  Frames.Demo(onScreen and pct or nil, preview.drinking)
 end
 
 local function buildPreview(parent)
   local panel = CreateFrame("Frame", nil, parent)
   panel:SetSize(230, 190)
   panel:SetPoint("BOTTOMRIGHT", -14, 52)
+  preview.panel = panel
+
+  -- On screen the box stands alone: it gets a dark plate and can be dragged.
+  local back = panel:CreateTexture(nil, "BACKGROUND")
+  back:SetPoint("TOPLEFT", -10, 10)
+  back:SetPoint("BOTTOMRIGHT", 10, -10)
+  back:SetColorTexture(0.06, 0.03, 0.08, 0.92)
+  back:Hide()
+  preview.back = back
+  panel:SetMovable(true)
+  panel:SetClampedToScreen(true)
+  panel:RegisterForDrag("LeftButton")
+  panel:SetScript("OnDragStart", function(self)
+    if onScreen then self:StartMoving() end
+  end)
+  panel:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, rel, x, y = self:GetPoint(1)
+    preview.point = { point, rel, x, y }
+  end)
 
   local head = ns.Text(panel, "section", 13)
   head:SetPoint("TOPLEFT", 14, 0)
@@ -441,12 +462,16 @@ local function buildPreview(parent)
 
   local play = button(panel, L.PREVIEW_PLAY, 110, function() ns.PlayPreview() end)
   play:SetPoint("TOPRIGHT", -4, -122)
+
+  -- "Preview on screen" in the window; "Back to Options" once the box stands alone.
+  preview.screen = button(panel, L.PREVIEW_SCREEN, 222, function() toggleScreen() end)
+  preview.screen:SetPoint("TOPLEFT", 4, -156)
 end
 
 -- Plays a stand-in healer through the levels on all five indicators: 100% down to 0%, a
 -- drink, then full. Nothing is posted anywhere (spec 9.3).
 function ns.PlayPreview()
-  if not window or not window:IsShown() then ns.ToggleOptions(true) end
+  if not onScreen and (not window or not window:IsShown()) then ns.ToggleOptions(true) end
   if preview.ticker then preview.ticker:Cancel() end
   local tick = 0
   playing = true
@@ -503,6 +528,75 @@ local function revert()
   ns.Apply()
 end
 
+-- The Options session is over (window closed, or a fight began during the on-screen
+-- preview): unsaved changes go back, and every sample and grab plate leaves the screen.
+local function endSession()
+  if preview.ticker then preview.ticker:Cancel() end
+  playing = false
+  if unsaved() then
+    revert()
+    ns.Print(L.OPT_DISCARDED)
+  end
+  saved = nil
+  if ns.unlocked then
+    ns.unlocked = false
+    ns.UpdateAll()
+  end
+  ns.Flask.Demo(nil)
+  ns.Vignette.Demo(nil)
+  ns.Banner.Demo(nil)
+  Frames.Demo(nil)
+end
+
+-- ---------------------------------------------------------------- preview on screen
+
+-- Puts the preview box in the window (docked) or on its own near the top of the screen.
+local function dock(docked)
+  local panel = preview.panel
+  panel:SetParent(docked and window.content or UIParent)
+  panel:ClearAllPoints()
+  if docked then
+    panel:SetPoint("BOTTOMRIGHT", -14, 52)
+  else
+    local p = preview.point
+    if p then panel:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else panel:SetPoint("TOP", 0, -60) end
+    panel:SetFrameStrata("DIALOG")
+  end
+  panel:EnableMouse(not docked)
+  preview.back:SetShown(not docked)
+  preview.screen:SetText(docked and L.PREVIEW_SCREEN or L.PREVIEW_BACK)
+end
+
+-- Tucks the window away and shows every indicator where it really sits, at the preview's
+-- mana, with grab plates on the ones that move. A second call brings the window back.
+-- Unsaved changes ride along either way.
+function toggleScreen()
+  if not window then return end
+  if onScreen then
+    onScreen = false
+    dock(true)
+    ns.unlocked = false
+    window:Show()
+  else
+    onScreen = true
+    dock(false)
+    window:Hide()
+    ns.unlocked = true
+    ns.Print(L.SCREEN_ON)
+  end
+  ns.UpdateAll()
+  ns.RefreshOptions()
+end
+
+-- A fight ends the on-screen preview: nothing of ours shows in combat (spec 1.1).
+local function onCombat()
+  if not onScreen then return end
+  onScreen = false
+  dock(true)
+  ns.Print(L.SCREEN_COMBAT)
+  endSession()
+end
+
 -- ---------------------------------------------------------------- the window
 
 local function buildWindow()
@@ -549,23 +643,12 @@ local function buildWindow()
   saveState:SetPoint("LEFT", revertButton, "RIGHT", 12, 0)
 
   -- Closing (the X, Escape, /sot) without saving puts the settings back, and ends previews.
+  -- Tucked away for the on-screen preview is not closed.
   window:HookScript("OnHide", function()
-    if preview.ticker then preview.ticker:Cancel() end
-    playing = false
-    if unsaved() then
-      revert()
-      ns.Print(L.OPT_DISCARDED)
-    end
-    saved = nil
-    -- Placing ends with the window, so no grab plates are left on screen.
-    if ns.unlocked then
-      ns.unlocked = false
-      ns.UpdateAll()
-    end
-    ns.Flask.Demo(nil)
-    ns.Vignette.Demo(nil)
-    ns.Banner.Demo(nil)
+    if not onScreen then endSession() end
   end)
+  window:RegisterEvent("PLAYER_REGEN_DISABLED")
+  window:SetScript("OnEvent", onCombat)
   window:Hide()
   show(1)
 end
@@ -585,6 +668,7 @@ end
 
 function ns.ToggleOptions(forceOpen)
   if not window then buildWindow() end
+  if onScreen then return toggleScreen() end
   if not window:IsShown() then
     saved = ns.DeepCopy(ns.Settings())
     window:Show()

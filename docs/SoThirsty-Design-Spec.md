@@ -187,7 +187,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 - The healer's name underneath, class-colored.
 - With `flask.whenLow` on, it goes back to hiding while mana is fine: every texture's alpha comes from the fade curve and the name's from `low` (Q27; the name is dropped if the client refuses).
 - **Several healers:** `flask.layout` lines them up in a **row** (default) or a **column**. `flask.together` (default on) places them as one stack; off, each flask is dragged to its own spot, saved per slot (first healer, second healer...) in `flask.points`. While placing, three stand-ins show so the layout can be seen.
-- Options: only when low, opacity (20–100%), size, show names, row or column, stack or one by one. Placed with "Show it to place it" / `/sot move`.
+- Options: only when low, opacity (20–100%), size, show names, row or column, stack or one by one. Placed in the on-screen preview (Section 9.2) or with `/sot move`.
 
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
@@ -195,7 +195,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 - If the client won't color or fade text from hidden values (Q27), the name is dropped and the icon and underline still show.
 - Our own frame. Up to 8 lines.
 - Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size. Placed like the flask.
-- **Placing** (`/sot move`, or "Place it" on the Flask and Banner tabs) shows a sample with a purple plate to drag. It ends on a second click, `/sot lock`, or when the Options window closes. An indicator that is switched off shows nothing, placing or not.
+- **Placing** (`/sot move`, or the on-screen preview, Section 9.2) shows a sample with a purple plate to drag. It ends with `/sot lock`, or when the on-screen preview or the Options window closes. An indicator that is switched off shows nothing, placing or not.
 
 ### 8.5 Screen-edge glow (`UI/Vignette.lua`, `settings.vignette`, **off** by default)
 
@@ -232,6 +232,7 @@ v2's frame looks (tint, glow, border, corners, bar strip), the pulse, the nudge 
 - The Options window has a stand-in unit frame with its own fake mana bar. It shows the bar color and pips at a chosen mana level, using plain numbers.
 - Opening the Flask, Banner or Screen glow tab shows that indicator at the same level, so each can be tuned without a group.
 - **Play** (`/sot test`) runs all five from 100% down to 0%, through a drink, and back. Nothing is posted.
+- **Preview on screen** (the button under the preview, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits, at the preview's mana: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of any healers in the group (`Frames.Demo`, plain numbers only). The flask, banner and drink button get their purple plates for dragging. The preview box stays on screen on its own (mana, drinking, Play), can be dragged, and its **Back to Options** button reopens the window. Unsaved changes ride along both ways. `/sot` also brings the window back. A fight ends it like closing the window (nothing of ours shows in combat).
 
 ### 9.3 Blizzard assets first
 
@@ -302,8 +303,8 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | **Levels** | The three levels (threshold + color each); color preset |
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
-| **Flask** | Show this; hide while mana is fine; opacity; size; show names; row or column; stack or one by one; place it |
-| **Banner** | Show this; how long after the fight; how long it stays; size; place it |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; row or column; stack or one by one; preview and place on screen |
+| **Banner** | Show this; how long after the fight; how long it stays; size; preview and place on screen |
 | **Screen glow** | Show this; strength; width; use my own color; the color |
 | **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; the two lines; make macros |
 

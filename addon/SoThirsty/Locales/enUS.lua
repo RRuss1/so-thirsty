@@ -40,7 +40,7 @@ ns.L = {
   -- /sot ghost, move
   GHOST_USAGE = "Usage: /sot ghost 35 (0 to 100; 0 turns the background art off).",
   GHOST_SET = "Window background art: %d%%.",
-  MOVE_ON = "Placing: drag the flask, the banner and the drink button by their purple plates. Click the button again, close Options, or type /sot lock when done.",
+  MOVE_ON = "Placing: drag the flask, the banner and the drink button by their purple plates. Type /sot lock when done.",
   MOVE_OFF = "Done placing.",
 
   -- /sot status
@@ -95,7 +95,7 @@ ns.L = {
   OPT_ON = "Show this",
   OPT_SIZE = "Size",
   OPT_RESET = "Reset",
-  OPT_PLACE = "Place it (click again when done)",
+  OPT_PLACE = "Preview and place on screen",
   SIZES = { small = "Small", medium = "Medium", large = "Large" },
   SECONDS = { [3] = "3 seconds", [5] = "5 seconds", [8] = "8 seconds", [10] = "10 seconds" },
 
@@ -170,6 +170,10 @@ ns.L = {
   PREVIEW_MANA = "Mana",
   PREVIEW_DRINK = "Drinking",
   PREVIEW_PLAY = "Play",
+  PREVIEW_SCREEN = "Preview on screen",
+  PREVIEW_BACK = "Back to Options",
+  SCREEN_ON = "Preview on screen: every indicator shows where it really sits. Drag the flask, banner and drink button by their purple plates. Click Back to Options when done.",
+  SCREEN_COMBAT = "A fight started: the preview is closed.",
 
   -- minimap button and its menu
   MINIMAP_TIP = { "Left-click: options", "Right-click: menu of commands", "Drag: move this button" },
