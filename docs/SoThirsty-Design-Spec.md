@@ -186,7 +186,8 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 - Built from a game potion icon: a dark, colorless copy behind (the empty flask); the same icon in color as a **vertical `StatusBar`** filled by `Curves.Fraction`, so the liquid drains (Q26); a 2 px edge that is the healer's **class color** while they are fine and the level colors below level 1 (`Curves.ClassColor`: the color curve with the class color as its "fine" end, one cached per class).
 - The healer's name underneath, class-colored.
 - With `flask.whenLow` on, it goes back to hiding while mana is fine: every texture's alpha comes from the fade curve and the name's from `low` (Q27; the name is dropped if the client refuses).
-- Options: only when low, opacity (20–100%), size, show names. Placed with "Show it to place it" / `/sot move`.
+- **Several healers:** `flask.layout` lines them up in a **row** (default) or a **column**. `flask.together` (default on) places them as one stack; off, each flask is dragged to its own spot, saved per slot (first healer, second healer...) in `flask.points`. While placing, three stand-ins show so the layout can be seen.
+- Options: only when low, opacity (20–100%), size, show names, row or column, stack or one by one. Placed with "Show it to place it" / `/sot move`.
 
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
@@ -275,7 +276,8 @@ settings = {
   palette = "classic",            -- "classic" | "water" | "colorblind" | "custom"
   bar = { enabled = true, alpha = 100 },
   pips = { enabled = true, size = "medium", corner = "TOPRIGHT" },
-  flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false },  -- + point once dragged
+  flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false,
+            layout = "row", together = true },                    -- + point / points once dragged
   banner = { enabled = true, delay = 5, hold = 5, scale = 100 },  -- + point once dragged
   vignette = { enabled = false, strength = 35, width = "medium", custom = false, color = { 0.31, 0.76, 0.97, 1 } },
   button = { show = "healer", party = true, raid = true, instance = true, prefix = true },
@@ -300,7 +302,7 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | **Levels** | The three levels (threshold + color each); color preset |
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
-| **Flask** | Show this; hide while mana is fine; opacity; size; show names; place it |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; row or column; stack or one by one; place it |
 | **Banner** | Show this; how long after the fight; how long it stays; size; place it |
 | **Screen glow** | Show this; strength; width; use my own color; the color |
 | **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; the two lines; make macros |

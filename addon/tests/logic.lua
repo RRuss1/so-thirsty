@@ -302,6 +302,7 @@ do
     s.bar.enabled and s.pips.enabled and s.flask.enabled and s.banner.enabled and not s.vignette.enabled)
   eq("defaults: banner 5 s after a fight", s.banner.delay, 5)
   check("defaults: the flask always shows, at full opacity", s.flask.whenLow == false and s.flask.alpha == 100)
+  check("defaults: flasks in a row, placed as one stack", s.flask.layout == "row" and s.flask.together == true)
   check("defaults: the screen glow uses the level colors", s.vignette.custom == false and #s.vignette.color == 4)
   eq("ZoneOk in a dungeon", (ns.ZoneOk()), true)
   zone = "pvp"

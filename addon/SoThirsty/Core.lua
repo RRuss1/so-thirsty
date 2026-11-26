@@ -17,7 +17,9 @@ local DB_DEFAULTS = {
     -- The five indicators (spec 8).
     bar = { enabled = true, alpha = 100 },
     pips = { enabled = true, size = "medium", corner = "TOPRIGHT" },
-    flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false },
+    flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false,
+      layout = "row",               -- several healers: "row" | "column"
+      together = true },            -- placed as one stack (true) or one flask at a time
     banner = { enabled = true, delay = 5, hold = 5, scale = 100 },
     vignette = { enabled = false, strength = 35, width = "medium", custom = false, color = { 0.31, 0.76, 0.97, 1 } },
     -- The drink button: the only thing that posts to chat (spec 8.6).

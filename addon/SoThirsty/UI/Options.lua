@@ -315,6 +315,8 @@ local function tabList()
       step(L.OPT_OPACITY, flaskCfg, "alpha", 20, 100, 10, "%"),
       step(L.OPT_SIZE, flaskCfg, "scale", 60, 200, 10, "%"),
       check(L.OPT_FLASK_NAMES, flaskCfg, "names"),
+      cycle(L.OPT_FLASK_LAYOUT, flaskCfg, "layout", { "row", "column" }, L.FLASK_LAYOUT),
+      cycle(L.OPT_FLASK_TOGETHER, flaskCfg, "together", { true, false }, L.FLASK_TOGETHER),
       placeRow,
       { "note", L.NOTE_FLASK, 60 },
     } },
@@ -374,7 +376,8 @@ local function paintPreview()
 
   local open = window and window:IsShown()
   if open and (playing or currentTab == "flask") then
-    ns.Flask.Demo(pct, preview.drinking)
+    -- On its own tab, three stand-ins show how several healers line up.
+    ns.Flask.Demo(pct, preview.drinking, currentTab == "flask" and 3 or 1)
   else
     ns.Flask.Demo(nil)
   end
@@ -477,6 +480,7 @@ local function keepPlacement()
   for _, key in ipairs({ "button", "flask", "banner" }) do
     saved[key].point = s[key].point and ns.DeepCopy(s[key].point) or nil
   end
+  saved.flask.points = s.flask.points and ns.DeepCopy(s.flask.points) or nil
   saved.minimap.angle = s.minimap.angle
 end
 
