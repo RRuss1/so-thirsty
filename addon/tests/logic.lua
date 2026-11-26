@@ -125,39 +125,35 @@ local function near(name, got, want)
 end
 
 -- A config like the defaults, with easy colors: yellow, orange, red.
-local function cfg(a, b, c, bands)
+local function cfg(a, b, c)
   return {
     levels = {
       { pct = a or 50, color = { 1, 1, 0 } },
       { pct = b or 30, color = { 1, 0.5, 0 } },
       { pct = c or 10, color = { 1, 0, 0 } },
     },
-    ready = { pct = 90 },
-    look = { bands = bands or "smooth", strength = true, alpha = 80, faint = 50, rest = 70, drinkDim = 35, combat = "hide" },
   }
 end
 
 -- ---------------------------------------------------------------- Levels (spec 6.3)
 
 do
-  local function v(a, b, c, r)
-    return select(2, Levels.Validate({ { pct = a }, { pct = b }, { pct = c } }, r and { pct = r })) or "ok"
+  local function v(a, b, c)
+    return select(2, Levels.Validate({ { pct = a }, { pct = b }, { pct = c } })) or "ok"
   end
-  eq("Validate 50/30/10 + 90", v(50, 30, 10, 90), "ok")
+  eq("Validate 50/30/10", v(50, 30, 10), "ok")
   eq("Validate 30/50/10: order", v(30, 50, 10), "ORDER")
   eq("Validate equal levels: order", v(50, 50, 10), "ORDER")
   eq("Validate 0: range", v(50, 30, 0), "RANGE")
   eq("Validate 100: range", v(100, 30, 10), "RANGE")
   eq("Validate 12.5: range", v(50, 12.5, 10), "RANGE")
-  eq("Validate Ready 40 under level 1: ready", v(50, 30, 10, 40), "READY")
-  eq("Validate Ready equal to level 1: ready", v(50, 30, 10, 50), "READY")
 end
 
 do
   local c = cfg()
   local p = Levels.ColorPoints(c)
-  eq("ColorPoints smooth: linear", p.type, "linear")
-  eq("  four points", #p.points, 4)
+  eq("ColorPoints: linear", p.type, "linear")
+  eq("  five points", #p.points, 5)
   near("  x1 = 0", p.points[1][1], 0)
   near("  x2 = 0.1", p.points[2][1], 0.1)
   near("  x3 = 0.3", p.points[3][1], 0.3)
@@ -166,87 +162,80 @@ do
   near("  red at level 3", p.points[2][3], 0)
   near("  orange at level 2", p.points[3][3], 0.5)
   near("  yellow at level 1", p.points[4][3], 1)
-  local withFine = Levels.ColorPoints(c, { 0, 0, 1 })
-  eq("  a fine color adds one point", #withFine.points, 5)
-  check("  just above level 1", withFine.points[5][1] > 0.5 and withFine.points[5][1] < 0.51)
-  near("  and it's blue", withFine.points[5][4], 1)
-end
-
-do
-  local c = cfg(50, 30, 10, "steps")
-  local p = Levels.ColorPoints(c)
-  eq("ColorPoints steps: step", p.type, "step")
-  eq("  five bands below 50%", #p.points, 5)
-  for i, point in ipairs(p.points) do near("  band " .. i .. " starts on a 10% line", point[1], (i - 1) / 10) end
-  near("  the 0-10% band is red", p.points[1][3], 0)
-  near("  the 20-30% band is a red/orange blend", p.points[3][3], 0.375)
-  near("  the 40-50% band is an orange/yellow blend", p.points[5][3], 0.875)
-  eq("  level 1 at 80: eight bands", #Levels.ColorPoints(cfg(80, 30, 10, "steps")).points, 8)
-  eq("  a fine color adds the step at level 1", #Levels.ColorPoints(c, { 0, 0, 1 }).points, 6)
-  local r, g = Levels.ColorShown(27, c)
-  check("ColorShown in steps mode uses the band's color", r == 1 and math.abs(g - 0.375) < 1e-6)
-  near("ColorShown smooth at 20%", select(2, Levels.ColorShown(20, cfg())), 0.25)
+  check("  water blue just above level 1", p.points[5][1] > 0.5 and p.points[5][1] < 0.51)
+  near("  and it's the fine color", p.points[5][4], Levels.FINE[3])
+  near("ColorAt 20% is a red/orange blend", select(2, Levels.ColorAt(20, c)), 0.25)
+  near("ColorAt 80% is water blue", select(3, Levels.ColorAt(80, c)), Levels.FINE[3])
 end
 
 do
   local c = cfg()
   local p = Levels.AlphaPoints(c)
-  eq("AlphaPoints with strength: linear", p.type, "linear")
-  near("  full at 0", p.points[1][2], 0.8)
-  near("  full at level 3", p.points[2][2], 0.8)
+  eq("AlphaPoints: linear", p.type, "linear")
+  near("  full at 0", p.points[1][2], 1)
+  near("  full at level 3", p.points[2][2], 1)
   near("  level 3 x", p.points[2][1], 0.1)
-  near("  faint just under level 1", p.points[3][2], 0.4)
+  near("  faint just under level 1", p.points[3][2], Levels.FAINT)
   check("  just under", p.points[3][1] < 0.5 and p.points[3][1] > 0.49)
   near("  zero at level 1", p.points[4][2], 0)
   near("  level 1 x", p.points[4][1], 0.5)
-  near("AlphaAt 5%", Levels.AlphaAt(5, c), 0.8)
-  near("AlphaAt 30%", Levels.AlphaAt(30, c), 0.6)
+  near("AlphaAt 5%", Levels.AlphaAt(5, c), 1)
+  near("AlphaAt 30% is halfway", Levels.AlphaAt(30, c), (1 + Levels.FAINT) / 2)
   near("AlphaAt 50%", Levels.AlphaAt(50, c), 0)
   near("AlphaAt 80%", Levels.AlphaAt(80, c), 0)
-  c.look.strength = false
-  p = Levels.AlphaPoints(c)
-  eq("AlphaPoints without strength: step", p.type, "step")
-  near("  flat", p.points[1][2], 0.8)
-  near("  off at level 1", p.points[2][1], 0.5)
-  near("  to zero", p.points[2][2], 0)
-  near("AlphaAt 45% without strength", Levels.AlphaAt(45, c), 0.8)
 end
 
 do
   local c = cfg(60, 40, 20)
-  local pulse, ready = Levels.PulsePoints(c), Levels.ReadyPoints(c)
-  near("PulsePoints: on from 0", pulse.points[1][2], 1)
-  near("  off at level 3 (20%)", pulse.points[2][1], 0.2)
-  near("  to zero", pulse.points[2][2], 0)
-  near("ReadyPoints: off from 0", ready.points[1][2], 0)
-  near("  on at Ready (90%)", ready.points[2][1], 0.9)
-  near("  to one", ready.points[2][2], 1)
+  local low = Levels.LowPoints(c)
+  eq("LowPoints: step", low.type, "step")
+  near("  on from 0", low.points[1][2], 1)
+  near("  off at level 1 (60%)", low.points[2][1], 0.6)
+  near("  to zero", low.points[2][2], 0)
+  for i, want in ipairs({ 0.6, 0.4, 0.2 }) do
+    local pip = Levels.PipPoints(c, i)
+    eq("PipPoints " .. i .. ": step", pip.type, "step")
+    near("  on from 0", pip.points[1][2], 1)
+    near("  off at its level", pip.points[2][1], want)
+    near("  to zero", pip.points[2][2], 0)
+  end
+  eq("PipsLit 70%", Levels.PipsLit(70, c), 0)
+  eq("PipsLit 60% (at level 1: not yet)", Levels.PipsLit(60, c), 0)
+  eq("PipsLit 59%", Levels.PipsLit(59, c), 1)
+  eq("PipsLit 39%", Levels.PipsLit(39, c), 2)
+  eq("PipsLit 5%", Levels.PipsLit(5, c), 3)
 end
 
 do
   local c = cfg()
+  local fraction, r, g, _, alpha, low, p1, p2, p3 = Levels.Plain(25, c)
+  near("Plain 25%: fraction", fraction, 0.25)
+  check("  a red/orange blend", r == 1 and math.abs(g - 0.375) < 1e-6)
+  check("  partly faded in", alpha > Levels.FAINT and alpha < 1)
+  check("  low, two pips", low == 1 and p1 == 1 and p2 == 1 and p3 == 0)
+  fraction, _, _, _, alpha, low, p1, p2, p3 = Levels.Plain(90, c)
+  near("Plain 90%: fraction", fraction, 0.9)
+  check("  invisible, not low, no pips", alpha == 0 and low == 0 and p1 == 0 and p2 == 0 and p3 == 0)
+end
+
+do
   local function known(t)
     local k = { enabled = true, zoneOk = true, inCombat = false, dead = false, offline = false, drinking = false }
     for key, value in pairs(t or {}) do k[key] = value end
     return k
   end
-  local a, grey, drinking = Levels.Holder(known(), c)
-  check("Holder: resting", math.abs(a - 0.7) < 1e-6 and not grey and not drinking)
-  a, grey, drinking = Levels.Holder(known({ drinking = true }), c)
-  check("Holder: drinking dims", math.abs(a - 0.35) < 1e-6 and not grey and drinking)
-  eq("Holder: combat hides", (Levels.Holder(known({ inCombat = true }), c)), 0)
-  a, grey, drinking = Levels.Holder(known({ inCombat = true, drinking = true }), c)
-  check("Holder: combat beats drinking", a == 0 and not grey and not drinking)
-  c.look.combat = "faint"
-  near("Holder: combat faint", (Levels.Holder(known({ inCombat = true }), c)), 0.15)
-  a, grey, drinking = Levels.Holder(known({ dead = true, drinking = true }), c)
-  check("Holder: dead beats drinking, greys", a == 0 and grey and not drinking)
-  a, grey = Levels.Holder(known({ offline = true }), c)
-  check("Holder: offline greys", a == 0 and grey)
-  a, grey = Levels.Holder(known({ enabled = false, dead = true }), c)
-  check("Holder: off beats everything", a == 0 and not grey)
-  a, grey = Levels.Holder(known({ zoneOk = false, dead = true }), c)
-  check("Holder: wrong zone shows nothing", a == 0 and not grey)
+  local a, drinking = Levels.Holder(known())
+  check("Holder: showing", a == 1 and not drinking)
+  a, drinking = Levels.Holder(known({ drinking = true }))
+  check("Holder: drinking dims", math.abs(a - Levels.DRINK_DIM) < 1e-6 and drinking)
+  eq("Holder: combat hides", (Levels.Holder(known({ inCombat = true }))), 0)
+  a, drinking = Levels.Holder(known({ inCombat = true, drinking = true }))
+  check("Holder: combat beats drinking", a == 0 and not drinking)
+  a, drinking = Levels.Holder(known({ dead = true, drinking = true }))
+  check("Holder: dead beats drinking", a == 0 and not drinking)
+  eq("Holder: offline hides", (Levels.Holder(known({ offline = true }))), 0)
+  eq("Holder: off hides", (Levels.Holder(known({ enabled = false }))), 0)
+  eq("Holder: wrong zone hides", (Levels.Holder(known({ zoneOk = false }))), 0)
 
   eq("CanNudge: normal", Levels.CanNudge(known(), false), true)
   eq("CanNudge: drinking", Levels.CanNudge(known({ drinking = true }), false), false)
@@ -268,7 +257,7 @@ do
   eq("ButtonAllowed: first click", Levels.ButtonAllowed(100, log), true)
   log[1] = 100
   eq("  second inside 15 s: cooldown", select(2, Levels.ButtonAllowed(110, log)), "COOLDOWN")
-  eq("  after 15 s: ok", Levels.ButtonAllowed(131, log), true)
+  eq("  after 15 s: ok", Levels.ButtonAllowed(116, log), true)
   log[2], log[3] = 131, 170
   eq("  fourth inside 5 min: cap", select(2, Levels.ButtonAllowed(210, log)), "CAP")
   eq("  once the first ages out: ok", Levels.ButtonAllowed(401, log), true)
@@ -276,42 +265,39 @@ do
 end
 
 do
-  local new = Levels.Migrate({
-    enabled = false, roleHint = false,
+  -- Settings from any older version: keep what still exists, drop the rest.
+  local old = {
+    enabled = false, roleHint = false, combatScope = "me",
     levels = { { enabled = true, pct = 60, color = { 1, 1, 1, 1 }, out = {} }, { pct = 40 }, { pct = 20 } },
-    ready = { pct = 95, out = {} }, look = { ghost = 40, palette = "water", badgePos = "TOPRIGHT" },
-    sound = { enabled = true }, announceMode = "group",
-  })
+    ready = { pct = 95 }, look = { ghost = 40, palette = "water", style = "tint", alpha = 45 },
+    frames = { enabled = true, readyTick = true }, meter = { enabled = true }, nudge = true, sound = { enabled = true },
+    button = { show = "always", party = false, thirstyMsg = "hi", point = { "CENTER", "CENTER", 1, 2 } },
+    zones = { dungeon = true, raid = false, world = true }, minimap = { hide = true, angle = 90 },
+  }
+  local new = Levels.Migrate(old)
   check("Migrate keeps levels", new.levels[1].pct == 60 and new.levels[3].pct == 20 and new.levels[1].color[1] == 1)
-  check("  and drops the v1 output grid", new.levels[1].out == nil and new.levels[1].enabled == nil)
-  check("  keeps enabled, role hint and ready", new.enabled == false and new.roleHint == false and new.ready.pct == 95)
-  check("  keeps ghost and palette", new.look.ghost == 40 and new.look.palette == "water")
-  check("  drops sound, chat and badge settings", new.sound == nil and new.announceMode == nil and new.look.badgePos == nil)
-  local bad = Levels.Migrate({ levels = { { pct = 30 }, { pct = 50 }, { pct = 10 } }, ready = { pct = 20 } })
+  check("  and drops their old fields", new.levels[1].out == nil and new.levels[1].enabled == nil)
+  check("  keeps on/off, role hint, combat scope", new.enabled == false and new.roleHint == false and new.combatScope == "me")
+  eq("  keeps the palette", new.palette, "water")
+  check("  keeps the drink button", new.button.show == "always" and new.button.party == false and new.button.thirstyMsg == "hi")
+  check("  as a copy", new.button ~= old.button and new.button.point ~= old.button.point and new.button.point[3] == 1)
+  check("  keeps zones and the minimap button", new.zones.raid == false and new.minimap.hide == true and new.minimap.angle == 90)
+  check("  drops looks, motion, meter, sounds, ready",
+    new.look == nil and new.frames == nil and new.meter == nil and new.nudge == nil and new.sound == nil and new.ready == nil)
+  local bad = Levels.Migrate({ levels = { { pct = 30 }, { pct = 50 }, { pct = 10 } } })
   check("Migrate drops an invalid level order", bad.levels[1] == nil)
-  check("  and a Ready that would sit under the default level 1", bad.ready == nil)
-end
-
-do
-  local old = { look = { style = "glow", alpha = 80, faint = 35, rest = 70 } }
-  eq("ToTint moves the old default look", Levels.ToTint(old), true)
-  check("  to a 45% whole-frame tint", old.look.style == "tint" and old.look.alpha == 45 and old.look.faint == 50 and old.look.rest == 80)
-  local chosen = { look = { style = "border", alpha = 80, faint = 35, rest = 70 } }
-  eq("ToTint leaves a chosen style alone", Levels.ToTint(chosen), false)
-  eq("  unchanged", chosen.look.style, "border")
-  local tuned = { look = { style = "glow", alpha = 60 } }
-  eq("ToTint leaves a tuned glow alone", Levels.ToTint(tuned), false)
 end
 
 -- ---------------------------------------------------------------- settings
 
 do
   local s = SoThirstyDB.settings
-  eq("defaults: version 3", SoThirstyDB.version, 3)
-  check("defaults: whole-frame tint, 45% at most", s.look.style == "tint" and s.look.alpha == 45)
-  check("defaults: 50/30/10, Ready 90", s.levels[1].pct == 50 and s.levels[3].pct == 10 and s.ready.pct == 90)
-  eq("defaults: nudge 5 s after a fight", s.nudgeDelay, 5)
-  check("defaults validate", Levels.Validate(s.levels, s.ready))
+  eq("defaults: version 4", SoThirstyDB.version, 4)
+  check("defaults: 50/30/10", s.levels[1].pct == 50 and s.levels[2].pct == 30 and s.levels[3].pct == 10)
+  check("defaults validate", Levels.Validate(s.levels))
+  check("defaults: bar, pips, flask and banner on; screen glow off",
+    s.bar.enabled and s.pips.enabled and s.flask.enabled and s.banner.enabled and not s.vignette.enabled)
+  eq("defaults: banner 5 s after a fight", s.banner.delay, 5)
   eq("ZoneOk in a dungeon", (ns.ZoneOk()), true)
   zone = "pvp"
   local ok, pvp = ns.ZoneOk()
@@ -358,9 +344,9 @@ do
   units.party1.dead, units.party1.offline = nil, true
   eq("Known: offline", ns.Roster.Known(h).offline, true)
   units.party1.offline = nil
-  SoThirstyDB.settings.frames.enabled = false
-  eq("Known: frames switched off", ns.Roster.Known(h).enabled, false)
-  SoThirstyDB.settings.frames.enabled = true
+  SoThirstyDB.settings.enabled = false
+  eq("Known: switched off", ns.Roster.Known(h).enabled, false)
+  SoThirstyDB.settings.enabled = true
 end
 
 do
@@ -432,12 +418,15 @@ do
   fire("GROUP_ROSTER_UPDATE")
 end
 
--- ---------------------------------------------------------------- Combat and the nudge (spec 7)
+-- ---------------------------------------------------------------- Combat and the banner (spec 7)
 
+-- The banner is UI; here it just records who Combat asked it to show.
 local nudged = {}
-ns.Frames = {
-  Update = function() end, UpdateAll = function() end, Restyle = function() end,
-  Nudge = function(h) nudged[#nudged + 1] = h.name end,
+ns.Banner = {
+  Refresh = function() end, Hide = function() end,
+  Show = function(list)
+    for _, h in ipairs(list) do nudged[#nudged + 1] = h.name end
+  end,
 }
 local function fight()
   combat = true
@@ -497,11 +486,16 @@ do
   eq("a dead healer gets no nudge", #nudged, 0)
   units.party1.dead = nil
 
-  SoThirstyDB.settings.nudge = false
+  SoThirstyDB.settings.banner.enabled = false
   lastDelay = nil
   fight()
-  eq("nudge switched off: no timer", lastDelay, nil)
-  SoThirstyDB.settings.nudge = true
+  eq("banner switched off: no timer", lastDelay, nil)
+  SoThirstyDB.settings.banner.enabled = true
+  SoThirstyDB.settings.banner.delay = 8
+  fight()
+  eq("the banner delay setting is used", lastDelay, 8)
+  SoThirstyDB.settings.banner.delay = 5
+  runTimers()
 end
 
 do
@@ -585,42 +579,47 @@ end
 
 do
   printed = {}
+  local s = SoThirstyDB.settings
   ns.RunCommand("levels 60 40 20")
-  local lv = SoThirstyDB.settings.levels
+  local lv = s.levels
   check("/sot levels 60 40 20", lv[1].pct == 60 and lv[2].pct == 40 and lv[3].pct == 20)
   ns.RunCommand("levels 30 50 10")
   check("/sot levels 30 50 10 is rejected", lv[1].pct == 60 and printed[#printed]:find("lower than"))
-  ns.RunCommand("levels 95 40 20")
-  check("/sot levels above Ready is rejected", lv[1].pct == 60 and printed[#printed]:find("Ready"))
+  ns.RunCommand("levels 50 30 0")
+  check("/sot levels with a 0 is rejected", lv[1].pct == 60 and printed[#printed]:find("1 to 99"))
   ns.RunCommand("levels 50 30 10")
   ns.RunCommand("off")
-  check("/sot off", SoThirstyDB.settings.enabled == false and not rosterFrame.events.UNIT_POWER_UPDATE)
+  check("/sot off", s.enabled == false and not rosterFrame.events.UNIT_POWER_UPDATE)
   ns.RunCommand("on")
-  check("/sot on", SoThirstyDB.settings.enabled == true and rosterFrame.events.UNIT_POWER_UPDATE)
+  check("/sot on", s.enabled == true and rosterFrame.events.UNIT_POWER_UPDATE)
   printed = {}
   ns.RunCommand("status")
   check("/sot status lists the healer", (printed[2] or ""):find("Sherl") ~= nil, printed[2])
   printed = {}
   ns.RunCommand("")
   check("/sot with no options window prints status", (printed[2] or ""):find("Sherl") ~= nil, printed[2])
-  ns.RunCommand("meter")
-  eq("/sot meter turns the meter on", SoThirstyDB.settings.meter.enabled, true)
-  ns.RunCommand("meter")
-  eq("  and off", SoThirstyDB.settings.meter.enabled, false)
+
+  for command, key in pairs({ bar = "bar", pips = "pips", flask = "flask", banner = "banner", glow = "vignette" }) do
+    local before = s[key].enabled
+    ns.RunCommand(command)
+    eq("/sot " .. command .. " flips the indicator", s[key].enabled, not before)
+    ns.RunCommand(command)
+    eq("  and back", s[key].enabled, before)
+  end
+
   ns.RunCommand("move")
-  eq("/sot move unlocks", ns.unlocked, true)
+  eq("/sot move starts placing", ns.unlocked, true)
   ns.RunCommand("lock")
-  eq("/sot lock locks", ns.unlocked, false)
+  eq("/sot lock ends it", ns.unlocked, false)
   ns.RunCommand("ghost 40")
-  eq("/sot ghost 40", SoThirstyDB.settings.look.ghost, 40)
+  eq("/sot ghost 40", s.ghost, 40)
   ns.RunCommand("ghost 200")
-  eq("/sot ghost 200 is rejected", SoThirstyDB.settings.look.ghost, 40)
+  eq("/sot ghost 200 is rejected", s.ghost, 40)
   ns.RunCommand("bogus")
   check("an unknown command says so", printed[#printed]:find("Unknown command") ~= nil)
-  local s = SoThirstyDB.settings
-  check("Theme.ApplyFeel calm", ns.Theme.ApplyFeel(s, "calm") and s.nudge == false and s.look.pulse == false)
-  check("Theme.ApplyPalette water", ns.Theme.ApplyPalette(s, "water") and s.look.palette == "water")
+  check("Theme.ApplyPalette water", ns.Theme.ApplyPalette(s, "water") and s.palette == "water")
   eq("  level 3 turns violet", s.levels[3].color[3], 0.97)
+  eq("Theme.ApplyPalette with a bad name does nothing", ns.Theme.ApplyPalette(s, "nope"), false)
 end
 
 -- ---------------------------------------------------------------- Save / Revert helpers

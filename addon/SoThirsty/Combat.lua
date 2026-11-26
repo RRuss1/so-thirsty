@@ -1,5 +1,5 @@
--- Group combat state and the after-fight nudge (spec Section 7). The glow hides in combat;
--- nudgeDelay seconds after a fight it brightens once, then settles.
+-- Group combat state and the after-fight moment (spec Section 7). Every indicator hides in
+-- combat; banner.delay seconds after a fight the banner shows once.
 local _, ns = ...
 
 local Combat = {}
@@ -44,14 +44,16 @@ local function deadCount()
   return dead, total
 end
 
--- Brightens every healer who may be nudged. A healer above level 1 has an invisible glow,
--- so nothing shows for them; the addon doesn't need to know who is low.
+-- The one after-fight moment: shows the banner. A healer above level 1 is invisible on it,
+-- so the addon doesn't need to know who is low.
 function Combat.Nudge()
   nudgeTimer = nil
-  if inCombat or not ns.Frames then return end
+  if inCombat or not ns.Banner then return end
+  local list = {}
   for _, h in pairs(ns.Roster.healers) do
-    if ns.Levels.CanNudge(ns.Roster.Known(h), wiped) then ns.Frames.Nudge(h) end
+    if ns.Levels.CanNudge(ns.Roster.Known(h), wiped) then list[#list + 1] = h end
   end
+  if #list > 0 then ns.Banner.Show(list) end
 end
 
 local function set(now)
@@ -65,9 +67,9 @@ local function set(now)
   if now then
     wiped = false
   else
-    wiped = s.quietAfterWipe and ns.Levels.Wiped(deadCount()) or false
-    if s.enabled and s.nudge and ns.Roster.Count() > 0 then
-      nudgeTimer = C_Timer.NewTimer(s.nudgeDelay, Combat.Nudge)
+    wiped = ns.Levels.Wiped(deadCount())
+    if s.enabled and s.banner.enabled and ns.Roster.Count() > 0 then
+      nudgeTimer = C_Timer.NewTimer(s.banner.delay, Combat.Nudge)
     end
   end
   if s.debugEvents then ns.Print(("|cff888888combat|r %s wiped=%s"):format(tostring(now), tostring(wiped))) end

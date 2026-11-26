@@ -49,8 +49,11 @@ function ns.OpenMainMenu(owner)
     root:CreateDivider()
     root:CreateCheckbox(entry(L.M_ENABLED, "on | off"), function() return s.enabled end,
       function() ns.RunCommand(s.enabled and "off" or "on") end)
-    root:CreateCheckbox(entry(L.M_METER, "meter"), function() return s.meter.enabled end, run("meter"))
-    root:CreateCheckbox(entry(L.M_UNLOCK, "move | lock"), function() return ns.unlocked == true end,
+    for _, item in ipairs({ { "bar", "bar", L.TAB_BAR }, { "pips", "pips", L.TAB_PIPS }, { "flask", "flask", L.TAB_FLASK },
+      { "banner", "banner", L.TAB_BANNER }, { "vignette", "glow", L.TAB_GLOW } }) do
+      root:CreateCheckbox(entry(item[3], item[2]), function() return s[item[1]].enabled end, run(item[2]))
+    end
+    root:CreateCheckbox(entry(L.M_PLACE, "move | lock"), function() return ns.unlocked == true end,
       function() ns.RunCommand(ns.unlocked and "lock" or "move") end)
     root:CreateButton(entry(L.M_TEST, "test"), run("test"))
     root:CreateButton(entry(L.M_STATUS, "status"), run("status"))
@@ -60,7 +63,7 @@ function ns.OpenMainMenu(owner)
     root:CreateButton(entry(L.M_HIDE, "minimap"), run("minimap"))
     local debug = root:CreateButton(L.M_DEBUG)
     debug:CreateButton(entry(L.M_DEBUG_INFO, "debug"), run("debug"))
-    debug:CreateButton(entry(L.M_DEBUG_PARTY, "debug party"), run("debug party"))
+    debug:CreateButton(entry(L.M_DEBUG_LOOKS, "debug looks"), run("debug looks"))
     debug:CreateButton(entry(L.M_DEBUG_FRAMES, "debug frames"), run("debug frames"))
     debug:CreateButton(entry(L.M_DEBUG_DRINK, "debug drink"), run("debug drink"))
     debug:CreateButton(entry(L.M_DEBUG_ICONS, "debug icons"), run("debug icons"))

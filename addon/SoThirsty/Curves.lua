@@ -1,13 +1,13 @@
 -- Turns Levels' point lists into the game's curve objects, and asks the game to run a
 -- healer's hidden mana through them (spec Section 2, 16 Q18-Q19). The results are secret:
 -- they may only be handed to SetVertexColor / SetAlpha / SetValue. Never compared, never
--- stored, never used in math.
+-- stored, never used in math. Every getter returns an `ok` flag first: test only that.
 local _, ns = ...
 
 local Curves = {}
 ns.Curves = Curves
 
-local built = {}  -- color, meter, alpha, pulse, ready
+local built = {}  -- color, alpha, low, pip1, pip2, pip3
 local unitPct = _G.UnitPowerPercent
 local createColor = _G.CreateColor
 
@@ -38,7 +38,7 @@ local function build(spec, isColor)
   return curve
 end
 
--- Rebuilds every curve from the settings. Called at load and when a setting changes.
+-- Rebuilds every curve from the settings. Called at load and when a level or color changes.
 function Curves.Rebuild()
   for k in pairs(built) do built[k] = nil end
   Curves.error = nil
@@ -47,10 +47,9 @@ function Curves.Rebuild()
   local Levels = ns.Levels
   local ok, err = pcall(function()
     built.color = build(Levels.ColorPoints(cfg), true)
-    built.meter = build(Levels.ColorPoints(cfg, ns.COLORS and ns.COLORS.water or { 0.31, 0.76, 0.97 }), true)
     built.alpha = build(Levels.AlphaPoints(cfg), false)
-    built.pulse = build(Levels.PulsePoints(cfg), false)
-    built.ready = build(Levels.ReadyPoints(cfg), false)
+    built.low = build(Levels.LowPoints(cfg), false)
+    for i = 1, 3 do built["pip" .. i] = build(Levels.PipPoints(cfg, i), false) end
   end)
   if not ok then
     for k in pairs(built) do built[k] = nil end
@@ -63,15 +62,14 @@ local function colorOf(unit, curve)
   return color:GetRGB()
 end
 
--- The thirst color for a unit's mana. Returns ok, then secret r, g, b. Test only `ok`.
--- which: "color" (frames) or "meter" (water blue above level 1).
-function Curves.Color(unit, which)
-  local curve = built[which or "color"]
+-- Returns ok, then secret r, g, b: the thirst color for a unit's mana.
+function Curves.Color(unit)
+  local curve = built.color
   if not curve then return false end
   return pcall(colorOf, unit, curve)
 end
 
--- Returns ok, then a secret number for a unit's mana. which: "alpha" | "pulse" | "ready".
+-- Returns ok, then a secret number. which: "alpha" | "low" | "pip1" | "pip2" | "pip3".
 function Curves.Value(unit, which)
   local curve = built[which]
   if not curve then return false end
@@ -83,4 +81,18 @@ function Curves.Fraction(unit)
   local scale = _G.CurveConstants and _G.CurveConstants.ZeroToOne
   if not unitPct or not scale then return false end
   return pcall(unitPct, unit, manaType(), false, scale)
+end
+
+-- Everything an indicator needs for one unit, in the same order as Levels.Plain:
+-- ok, fraction, r, g, b, alpha, low, pip1, pip2, pip3. All secret except ok.
+function Curves.All(unit)
+  local okF, fraction = Curves.Fraction(unit)
+  local okC, r, g, b = Curves.Color(unit)
+  local okA, alpha = Curves.Value(unit, "alpha")
+  local okL, low = Curves.Value(unit, "low")
+  local ok1, p1 = Curves.Value(unit, "pip1")
+  local ok2, p2 = Curves.Value(unit, "pip2")
+  local ok3, p3 = Curves.Value(unit, "pip3")
+  if not (okF and okC and okA and okL and ok1 and ok2 and ok3) then return false end
+  return true, fraction, r, g, b, alpha, low, p1, p2, p3
 end

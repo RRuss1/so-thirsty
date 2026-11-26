@@ -13,10 +13,10 @@ local ICON = MEDIA .. "logo-128"
 local WINDOW_BG = { file = "Interface\\FrameGeneral\\UI-Background-Rock", tint = { 0.45, 0.3, 0.58, 1 } }
 local PANEL_BG = { file = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark", tint = { 0.6, 0.45, 0.75, 0.9 } }
 -- The logo in black and white (Media/ghost.tga, from art/SoThirstyIconPublic.jpeg): a faint ghost of it
--- fills every window's content panel. Strength is settings.look.ghost (0-100 %, 0 = off).
+-- fills every window's content panel. Strength is settings.ghost (0-100 %, 0 = off).
 local GHOST = MEDIA .. "ghost"
 local GHOST_TINT = { 1, 1, 1 } -- plain black and white
-local GHOST_DEFAULT = 25
+local GHOST_DEFAULT = 35
 
 local COLORS = {
   header = { 0.06, 0.03, 0.08, 0.8 },    -- darkens the title strip (shadowed plum)
@@ -231,8 +231,8 @@ function ns.CreateWindow(name, width, height, title)
   end
   function f.SetGhost(_, percent)
     if percent == nil then
-      local look = SoThirstyDB and SoThirstyDB.settings and SoThirstyDB.settings.look
-      percent = look and look.ghost or GHOST_DEFAULT
+      local settings = SoThirstyDB and SoThirstyDB.settings
+      percent = settings and settings.ghost or GHOST_DEFAULT
     end
     ghost:SetVertexColor(GHOST_TINT[1], GHOST_TINT[2], GHOST_TINT[3], percent / 100)
     ghost:SetShown(percent > 0)

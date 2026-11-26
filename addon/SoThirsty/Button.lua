@@ -136,7 +136,7 @@ end
 
 function Button.Tint()
   if not frame or not ns.Curves then return end
-  local ok, r, g, b = ns.Curves.Color("player", "meter")
+  local ok, r, g, b = ns.Curves.Color("player")
   for _, t in ipairs(frame.border) do
     if ok then t:SetVertexColor(r, g, b) else t:SetVertexColor(0.31, 0.76, 0.97) end
   end
@@ -167,7 +167,7 @@ function Button.Refresh()
       frame:ClearAllPoints()
       if p then frame:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else frame:SetPoint("CENTER", 0, -160) end
     end
-    frame.icon:SetTexture(ns.Theme.ICONS[s.look.icon] or ns.Theme.ICONS.drop)
+    frame.icon:SetTexture(ns.Theme.ICONS.drop)
     local busy = ns.Combat.Is()
     frame.icon:SetDesaturated(busy)
     frame:SetAlpha(busy and 0.4 or 1)

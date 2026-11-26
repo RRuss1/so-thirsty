@@ -70,7 +70,7 @@ local known = {}
 function Roster.Known(h)
   local s = ns.Settings()
   local dead, online = UnitIsDeadOrGhost(h.unit), UnitIsConnected(h.unit)
-  known.enabled = s.enabled and s.frames.enabled
+  known.enabled = s.enabled == true
   known.zoneOk = ns.ZoneOk() and true or false
   known.inCombat = ns.Combat.Is()
   known.dead = not ns.IsSecret(dead) and dead == true
