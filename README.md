@@ -48,8 +48,8 @@ It posts to party, raid or instance chat, whichever your group uses. Limits: 15 
 `/sot` opens the options window, or left-click the minimap button. There's one short tab per indicator, plus Levels, Drink button and General.
 
 - Changes show right away so you can judge them. Press **Save** to keep them; closing without Save undoes them.
-- The Flask, Banner and Screen glow tabs show a sample while they're open. **Play** runs all five through a full drain, with nothing posted.
-- **Preview on screen** hides the window and shows every indicator where it really sits, so you can judge and drag them into place. Click **Back to Options** on the small preview box to return.
+- The Flask, Banner and Screen glow tabs show a sample while they're open. **Play** runs all five through a full drain on screen, with nothing posted.
+- **Preview on screen** hides the window and shows every indicator where it really sits, so you can judge and drag them into place. Click **Back to Options** on the small bar to return.
 - **Levels:** where each of the three levels starts (steps of 10) and its color, with presets including a color-blind safe one.
 
 ## Commands

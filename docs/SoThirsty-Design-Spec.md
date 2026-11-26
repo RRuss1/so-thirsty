@@ -229,10 +229,11 @@ v2's frame looks (tint, glow, border, corners, bar strip), the pulse, the nudge 
 
 ### 9.2 Preview
 
-- The Options window has a stand-in unit frame with its own fake mana bar. It shows the bar color and pips at a chosen mana level, using plain numbers.
-- Opening the Flask, Banner or Screen glow tab shows that indicator at the same level, so each can be tuned without a group.
-- **Play** (`/sot test`) runs all five from 100% down to 0%, through a drink, and back. Nothing is posted.
-- **Preview on screen** (the button under the preview, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits, at the preview's mana: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of any healers in the group (`Frames.Demo`, plain numbers only). The flask, banner and drink button get their purple plates for dragging. The preview box stays on screen on its own (mana, drinking, Play), can be dragged, and its **Back to Options** button reopens the window. Unsaved changes ride along both ways. `/sot` also brings the window back. A fight ends it like closing the window (nothing of ours shows in combat).
+Previews happen on the real indicators, not on a stand-in inside the window. Samples use plain numbers and rest at 25% mana, so everything shows.
+
+- Opening the Flask, Banner or Screen glow tab shows that indicator's sample, so each can be tuned without a group.
+- **Play** (`/sot test`) goes on screen (below) and runs all five from 100% down to 0%, through a drink, and back to the resting sample. Nothing is posted.
+- **Preview on screen** (bottom right of the window, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of the healers in the group, or on the player's own frame when there are none (`Frames.Demo`, plain numbers only). The flask, banner and drink button get their purple plates for dragging. A small draggable bar stays up with two buttons: **Play** and **Back to Options**. Unsaved changes ride along both ways. `/sot` also brings the window back. It won't start in combat, and a fight ends it like closing the window (nothing of ours shows in combat).
 
 ### 9.3 Blizzard assets first
 
@@ -295,7 +296,7 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 
 ### 12.2 Options window (`UI/Options.lua`)
 
-**Big and sparse, so the art shows:** 900 × 660. A short list of tabs down the left; one short column of controls per tab; a small preview in the bottom right; the rest of the panel left open.
+**Big and sparse, so the art shows:** 900 × 660. A short list of tabs down the left; one short column of controls per tab; **Play** and **Preview on screen** in the bottom right (Section 9.2); the rest of the panel left open.
 
 | Tab | Options |
 |---|---|

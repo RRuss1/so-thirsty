@@ -167,13 +167,11 @@ ns.L = {
   -- options: preview
   PREVIEW = "Preview",
   PREVIEW_NAME = "Healer",
-  PREVIEW_MANA = "Mana",
-  PREVIEW_DRINK = "Drinking",
   PREVIEW_PLAY = "Play",
   PREVIEW_SCREEN = "Preview on screen",
   PREVIEW_BACK = "Back to Options",
   SCREEN_ON = "Preview on screen: every indicator shows where it really sits. Drag the flask, banner and drink button by their purple plates. Click Back to Options when done.",
-  SCREEN_COMBAT = "A fight started: the preview is closed.",
+  SCREEN_COMBAT = "The preview stays closed in combat.",
 
   -- minimap button and its menu
   MINIMAP_TIP = { "Left-click: options", "Right-click: menu of commands", "Drag: move this button" },

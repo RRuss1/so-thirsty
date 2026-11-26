@@ -225,12 +225,32 @@ end
 local demo
 local demoKnown = { enabled = true, zoneOk = true, inCombat = false, dead = false, offline = false }
 
+-- With no healer in the group (or no group), the sample goes on the player's own frame.
+local demoHealer = { unit = "player", guid = "demo" }
+
+local function release(guid, holder)
+  holder:Hide()
+  if holder.target and owner[holder.target] == holder then owner[holder.target] = nil end
+  holder.target = nil
+  holders[guid] = nil
+  spare[#spare + 1] = holder
+end
+
 -- Frames.Demo(40, drinking) starts or updates it; Frames.Demo(nil) ends it.
 function Frames.Demo(pct, drinking)
   if not pct and not demo then return end
   demo = pct
   demoKnown.drinking = drinking and true or false
-  for _, h in pairs(ns.Roster.healers) do Frames.Update(h) end
+  local healers = ns.Roster.healers
+  if pct and not next(healers) then
+    if not InCombatLockdown() then
+      attach(demoHealer, candidates())
+      Frames.Update(demoHealer)
+    end
+  elseif holders.demo then
+    release("demo", holders.demo)
+  end
+  for _, h in pairs(healers) do Frames.Update(h) end
 end
 
 -- Repaints one healer.
@@ -260,13 +280,7 @@ function Frames.UpdateAll()
   local healers = ns.Roster.healers
   if not InCombatLockdown() then
     for guid, holder in pairs(holders) do
-      if not healers[guid] then
-        holder:Hide()
-        if holder.target and owner[holder.target] == holder then owner[holder.target] = nil end
-        holder.target = nil
-        holders[guid] = nil
-        spare[#spare + 1] = holder
-      end
+      if not healers[guid] and not (demo and guid == "demo") then release(guid, holder) end
     end
     if Curves.Available() then
       local list = candidates()

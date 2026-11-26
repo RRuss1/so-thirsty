@@ -1,6 +1,6 @@
 -- The Options window (spec 12.2). Big and sparse on purpose, so the art behind it shows:
 -- a short list of tabs down the left (one per indicator), one short column of controls per
--- tab, and a small preview in the corner. Built from the game's own templates (spec 9.7);
+-- tab. Previews happen on screen, on the real indicators, with the window tucked away. Built from the game's own templates (spec 9.7);
 -- every color uses the game's color picker.
 local _, ns = ...
 local L = ns.L
@@ -12,9 +12,9 @@ local COL_X, COL_W = 190, 400 -- where a tab's column starts, and how wide it is
 local ROW_H = 32
 local window
 local refreshers = {}
-local preview = { pct = 40, drinking = false }
+local SAMPLE_PCT = 25        -- the mana the samples rest at: low enough that everything shows
+local preview = { pct = SAMPLE_PCT, drinking = false }
 local currentTab = "general"
-local playing = false
 local onScreen = false       -- the window is tucked away and the real indicators show samples
 local toggleScreen           -- defined below (it needs Save / Undo)
 
@@ -357,124 +357,61 @@ end
 
 -- ---------------------------------------------------------------- preview
 
-local previewKnown = { enabled = true, zoneOk = true, inCombat = false, dead = false, offline = false }
-
--- Paints the stand-in frame, and shows the off-frame indicator whose tab is open (or all
--- of them while Play runs), so each can be judged without a group.
+-- Shows samples at the preview's mana: in the window, the off-frame indicator whose tab is
+-- open; on screen, every indicator where it really sits, the unit frames too.
 local function paintPreview()
-  if not preview.holder then return end
-  local cfg = S()
   local pct = preview.pct
-  previewKnown.drinking = preview.drinking
-  Frames.Layout(preview.holder, preview.bar)
-  Frames.SetKnown(preview.holder, Levels.Holder(previewKnown))
-  Frames.Paint(preview.holder, Levels.Plain(pct, cfg))
-  preview.bar:SetValue(pct / 100)
-  preview.text:SetText(pct .. "%")
-
-  -- On screen, every indicator shows the sample where it really sits, the unit frames too.
   local open = window and (window:IsShown() or onScreen)
-  local all = playing or onScreen
-  if open and (all or currentTab == "flask") then
+  if open and (onScreen or currentTab == "flask") then
     -- Three stand-ins show how several healers line up.
-    ns.Flask.Demo(pct, preview.drinking, (onScreen or currentTab == "flask") and 3 or 1)
+    ns.Flask.Demo(pct, preview.drinking, 3)
   else
     ns.Flask.Demo(nil)
   end
-  if open and (all or currentTab == "glow") then ns.Vignette.Demo(pct) else ns.Vignette.Demo(nil) end
-  if open and (onScreen or (currentTab == "banner" and not playing)) then ns.Banner.Demo(pct) end
+  if open and (onScreen or currentTab == "glow") then ns.Vignette.Demo(pct) else ns.Vignette.Demo(nil) end
+  if open and (onScreen or currentTab == "banner") then ns.Banner.Demo(pct) end
   Frames.Demo(onScreen and pct or nil, preview.drinking)
 end
 
+-- The two preview buttons in the window, and the small bar that stays up on screen.
 local function buildPreview(parent)
-  local panel = CreateFrame("Frame", nil, parent)
-  panel:SetSize(230, 190)
-  panel:SetPoint("BOTTOMRIGHT", -14, 52)
-  preview.panel = panel
+  local screen = button(parent, L.PREVIEW_SCREEN, 160, function() toggleScreen() end)
+  screen:SetPoint("BOTTOMRIGHT", -14, 48)
+  local play = button(parent, L.PREVIEW_PLAY, 80, function() ns.PlayPreview() end)
+  play:SetPoint("RIGHT", screen, "LEFT", -8, 0)
 
-  -- On screen the box stands alone: it gets a dark plate and can be dragged.
-  local back = panel:CreateTexture(nil, "BACKGROUND")
-  back:SetPoint("TOPLEFT", -10, 10)
-  back:SetPoint("BOTTOMRIGHT", 10, -10)
-  back:SetColorTexture(0.06, 0.03, 0.08, 0.92)
-  back:Hide()
-  preview.back = back
-  panel:SetMovable(true)
-  panel:SetClampedToScreen(true)
-  panel:RegisterForDrag("LeftButton")
-  panel:SetScript("OnDragStart", function(self)
-    if onScreen then self:StartMoving() end
-  end)
-  panel:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    local point, _, rel, x, y = self:GetPoint(1)
-    preview.point = { point, rel, x, y }
-  end)
-
-  local head = ns.Text(panel, "section", 13)
-  head:SetPoint("TOPLEFT", 14, 0)
-  head:SetText(L.PREVIEW)
-
-  -- A stand-in unit frame with its own (fake) mana bar.
-  local unit = CreateFrame("Frame", nil, panel)
-  unit:SetSize(170, 46)
-  unit:SetPoint("TOP", 0, -30)
-  local bg = unit:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints()
-  bg:SetColorTexture(0.08, 0.08, 0.1, 0.95)
-  local name = unit:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-  name:SetPoint("TOPLEFT", 6, -6)
-  name:SetText(L.PREVIEW_NAME)
-  local bar = CreateFrame("StatusBar", nil, unit)
-  bar:SetPoint("BOTTOMLEFT", 2, 2)
-  bar:SetPoint("BOTTOMRIGHT", -2, 2)
-  bar:SetHeight(10)
-  bar:SetStatusBarTexture(Theme.BAR)
-  bar:SetStatusBarColor(0.2, 0.4, 0.95)
-  bar:SetMinMaxValues(0, 1)
+  local bar = CreateFrame("Frame", "SoThirstyPreviewBar", UIParent)
+  bar:SetSize(272, 36)
+  bar:SetPoint("TOP", 0, -60)
+  bar:SetFrameStrata("DIALOG")
+  bar:EnableMouse(true)
+  bar:SetMovable(true)
+  bar:SetClampedToScreen(true)
+  bar:RegisterForDrag("LeftButton")
+  bar:SetScript("OnDragStart", function(self) self:StartMoving() end)
+  bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+  local plate = bar:CreateTexture(nil, "BACKGROUND")
+  plate:SetAllPoints()
+  plate:SetColorTexture(0.06, 0.03, 0.08, 0.92)
+  ns.Edge(bar, "BORDER", ns.COLORS.goldEdge, 0)
+  local again = button(bar, L.PREVIEW_PLAY, 80, function() ns.PlayPreview() end)
+  again:SetPoint("LEFT", 8, 0)
+  local back = button(bar, L.PREVIEW_BACK, 160, function() toggleScreen() end)
+  back:SetPoint("RIGHT", -8, 0)
+  bar:Hide()
   preview.bar = bar
-
-  local holder = CreateFrame("Frame", nil, unit)
-  holder:SetAllPoints()
-  holder:SetFrameLevel(bar:GetFrameLevel() + 3)
-  Frames.Build(holder)
-  preview.holder = holder
-  preview.text = holder:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  preview.text:SetPoint("BOTTOMRIGHT", unit, "TOPRIGHT", 0, 3)
-
-  local manaLabel = ns.Text(panel, "body", 12)
-  manaLabel:SetPoint("TOPLEFT", 6, -96)
-  manaLabel:SetText(L.PREVIEW_MANA)
-  refreshers[#refreshers + 1] = stepper(panel, 226, -90, function() return preview.pct end,
-    function(v) preview.pct = v end, 0, 100, 10, "%")
-
-  local box = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-  box:SetSize(24, 24)
-  box:SetPoint("TOPLEFT", 2, -122)
-  local boxText = ns.Text(panel, "body", 12)
-  boxText:SetPoint("LEFT", box, "RIGHT", 2, 0)
-  boxText:SetText(L.PREVIEW_DRINK)
-  box:SetScript("OnClick", function(self)
-    preview.drinking = self:GetChecked() and true or false
-    paintPreview()
-  end)
-  preview.box = box
-
-  local play = button(panel, L.PREVIEW_PLAY, 110, function() ns.PlayPreview() end)
-  play:SetPoint("TOPRIGHT", -4, -122)
-
-  -- "Preview on screen" in the window; "Back to Options" once the box stands alone.
-  preview.screen = button(panel, L.PREVIEW_SCREEN, 222, function() toggleScreen() end)
-  preview.screen:SetPoint("TOPLEFT", 4, -156)
 end
 
--- Plays a stand-in healer through the levels on all five indicators: 100% down to 0%, a
--- drink, then full. Nothing is posted anywhere (spec 9.3).
+-- Plays a stand-in healer through the levels on every indicator, on screen: 100% down to
+-- 0%, a drink, then back to the resting sample. Nothing is posted anywhere (spec 9.3).
 function ns.PlayPreview()
-  if not onScreen and (not window or not window:IsShown()) then ns.ToggleOptions(true) end
+  if not onScreen then
+    if not window or not window:IsShown() then ns.ToggleOptions(true) end
+    toggleScreen()
+  end
+  if not onScreen then return end -- refused: in combat
   if preview.ticker then preview.ticker:Cancel() end
   local tick = 0
-  playing = true
   preview.ticker = C_Timer.NewTicker(0.3, function()
     tick = tick + 1
     if tick <= 21 then
@@ -482,12 +419,9 @@ function ns.PlayPreview()
     elseif tick <= 27 then
       preview.pct, preview.drinking = (tick - 21) * 15, true
     else
-      preview.pct, preview.drinking = 100, false
-      playing = false
+      preview.pct, preview.drinking = SAMPLE_PCT, false
     end
-    preview.box:SetChecked(preview.drinking)
     ns.RefreshOptions()
-    if tick == 14 then ns.Banner.Demo(preview.pct) end
   end, 28)
 end
 
@@ -532,7 +466,7 @@ end
 -- preview): unsaved changes go back, and every sample and grab plate leaves the screen.
 local function endSession()
   if preview.ticker then preview.ticker:Cancel() end
-  playing = false
+  preview.pct, preview.drinking = SAMPLE_PCT, false
   if unsaved() then
     revert()
     ns.Print(L.OPT_DISCARDED)
@@ -550,36 +484,22 @@ end
 
 -- ---------------------------------------------------------------- preview on screen
 
--- Puts the preview box in the window (docked) or on its own near the top of the screen.
-local function dock(docked)
-  local panel = preview.panel
-  panel:SetParent(docked and window.content or UIParent)
-  panel:ClearAllPoints()
-  if docked then
-    panel:SetPoint("BOTTOMRIGHT", -14, 52)
-  else
-    local p = preview.point
-    if p then panel:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else panel:SetPoint("TOP", 0, -60) end
-    panel:SetFrameStrata("DIALOG")
-  end
-  panel:EnableMouse(not docked)
-  preview.back:SetShown(not docked)
-  preview.screen:SetText(docked and L.PREVIEW_SCREEN or L.PREVIEW_BACK)
-end
-
--- Tucks the window away and shows every indicator where it really sits, at the preview's
--- mana, with grab plates on the ones that move. A second call brings the window back.
--- Unsaved changes ride along either way.
+-- Tucks the window away and shows every indicator where it really sits, at a sample mana,
+-- with grab plates on the ones that move. A small bar stays up; a second call brings the
+-- window back. Unsaved changes ride along either way.
 function toggleScreen()
   if not window then return end
   if onScreen then
     onScreen = false
-    dock(true)
+    if preview.ticker then preview.ticker:Cancel() end
+    preview.pct, preview.drinking = SAMPLE_PCT, false
+    preview.bar:Hide()
     ns.unlocked = false
     window:Show()
   else
+    if InCombatLockdown() then return ns.Print(L.SCREEN_COMBAT) end
     onScreen = true
-    dock(false)
+    preview.bar:Show()
     window:Hide()
     ns.unlocked = true
     ns.Print(L.SCREEN_ON)
@@ -592,7 +512,7 @@ end
 local function onCombat()
   if not onScreen then return end
   onScreen = false
-  dock(true)
+  preview.bar:Hide()
   ns.Print(L.SCREEN_COMBAT)
   endSession()
 end
