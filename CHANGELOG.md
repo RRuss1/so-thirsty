@@ -1,26 +1,27 @@
 # Changelog
 
-## v0.3.0 — Design v2: the glow (unreleased, not yet tested in a group)
+## v0.4.0 — Five indicators (unreleased, not yet tested in a group)
 
-In-game tests showed that Forever always hides mana from addons, so the first design (read mana, post chat warnings) can't exist. Design v2 shows mana visually and adds a manual chat button. The spec was rewritten around it.
+The first group test showed the frame glow hiding under aggro borders, and the options had piled up. The frame looks are gone, replaced by five indicators with one switch each.
 
-- **Glow on healer frames** (`Frames.lua`, `Curves.lua`): color and strength come from the game's curve functions, in 10% bands (smooth or stepped). Five styles: soft glow, border, corners, tint, bar strip.
-- **Known-state dimming:** hidden in combat (or very faint), dimmed with a drink icon while the healer drinks, a grey edge for dead or offline healers.
-- **Motion** (`Combat.lua`): one nudge 5 seconds after a fight, skipped on chain pulls, after a wipe and for drinking healers; a slow pulse below level 3; optional ready tick and range fade.
-- **Drink button** (`Button.lua`): "I need a drink" / "good to go", one line per click, 15 s cooldown, 3 lines per 5 minutes, never in combat or PvP. `/sot drink`, `/sot ready`.
-- **Thirst meter** (`UI/Meter.lua`, off by default): a small movable panel of healer mana bars.
-- **Options window** (`UI/Options.lua`): Levels, Look, Motion, Button and General tabs, color pickers, palettes, feel presets and a live preview. `/sot` opens it; `/sot test` plays the preview.
-- `Levels.lua` rewritten as pure curve-point and visibility logic, with tests. v1 settings are migrated.
-- **Minimap button** (`UI/Minimap.lua`): left-click for Options, right-click for a menu of every command, drag to move. `/sot minimap` hides it.
-- **Keys for the drink lines:** `/sot macro` makes action-bar macros; Key Bindings > AddOns has both lines too.
-- The thirst meter and the drink button can be dragged any time.
-- Options window: **Save** and **Undo changes**. Changes preview at once but only stick on Save; closing without Save undoes them.
-- Window background: the logo in black and white, filling the whole panel.
-- **Default look is now a whole-frame tint, 45% opacity at most.** Edge glows were hidden by the game's aggro borders. The other styles are still on the Look tab.
-- Fixed: the nudge lit the glow at full mana and drew lines past the frame corners; the pulse edge showed above level 3. Fade animations override a texture's own transparency, so motion now uses a timer.
-- First group test: curves, range fade, meter bars and drink buffs all work on party members (spec 16 Q20-Q24). Fixed the glow, whose corner pieces crossed outside the frame.
-- New checks: `/sot debug party`, `/sot debug frames`, `/sot debug icons`.
-- Removed: automatic chat lines, sounds, the on-screen banner, the poster election and addon messages. They all needed the mana number.
+- **Mana bar color:** the healer's own mana bar on their frame turns yellow, orange, then red below level 1.
+- **Pips:** dots on the healer's frame, one per level reached.
+- **Flask:** a flask per healer anywhere on screen; hidden while they're fine, it fades in and drains.
+- **After-fight banner:** 5 seconds after a fight, a low healer's name in their level color. Skipped on chain pulls, after a wipe and for a drinking healer.
+- **Screen-edge glow:** a soft haze on the screen edges. Off by default.
+- The flask, banner and screen glow work with party frames hidden.
+- **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left, one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
+- **Removed:** tint, glow, border, corners and bar-strip looks; the pulse, nudge brighten, ready tick, range fade and grey edge; the thirst meter; the Ready level; color-band modes; feel presets; and all their settings. `/sot meter` is gone; `/sot bar`, `pips`, `flask`, `banner`, `glow` are new.
+- Old settings are migrated: levels, colors, the drink button, zones and the minimap button carry over.
+- `/sot debug looks` checks the three things not yet proven on this client (spec 16 Q25–Q27). The old probes (`debug mana`, `curve`, `swatch`, `window`, `party`) are removed; their answers are in the spec.
+
+## v0.3.0 — Design v2: the glow (unreleased, superseded by v0.4.0)
+
+In-game tests showed that Forever always hides mana from addons, so the first design (read mana, post chat warnings) can't exist. Design v2 showed mana as a glow on healer frames and added a manual chat button.
+
+- **Kept in v0.4.0:** the curve engine (`Curves.lua`), healer tracking, drink detection, the combat gate, the **drink button** (one line per click, 15 s apart, 3 per 5 minutes, `[Thirsty]` tag, macros and key bindings), the **minimap button** with its right-click command menu, Save / Undo in Options, and the black-and-white art behind windows.
+- **Found in game:** curves work on party members' mana; drink buffs are readable ("Drink", spell 1135); fade animations override a texture's own transparency, so they can't be used over mana-driven art.
+- **Dropped in v0.4.0:** the glow and every other frame look, and the thirst meter.
 
 ## v0.2.0 — Logic (unreleased)
 
