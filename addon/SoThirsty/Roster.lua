@@ -47,7 +47,7 @@ function Roster.Scan()
         local h = healers[guid] or { guid = guid, drinking = false }
         healers[guid] = h
         h.unit = unit
-        h.name = UnitName(unit)
+        h.name, h.surname = UnitName(unit)
         local _, class = UnitClass(unit)
         h.class = nil
         if not ns.IsSecret(class) then h.class = class end
@@ -179,11 +179,16 @@ end
 
 -- ---------------------------------------------------------------- status
 
-function Roster.DisplayName(h)
+-- The healer's name in their class color. With `full`, "First Surname": on Forever the
+-- surname is UnitName's second value, where retail has the realm (spec 16 Q29).
+function Roster.DisplayName(h, full)
   if not h.name or ns.IsSecret(h.name) then return h.unit end
+  local name = h.name
+  local surname = full and h.surname
+  if type(surname) == "string" and not ns.IsSecret(surname) and surname ~= "" then name = name .. " " .. surname end
   local color = h.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[h.class]
-  if color and color.colorStr then return ("|c%s%s|r"):format(color.colorStr, h.name) end
-  return h.name
+  if color and color.colorStr then return ("|c%s%s|r"):format(color.colorStr, name) end
+  return name
 end
 
 -- One line per tracked healer (used by /sot status and the compartment tooltip). No mana
