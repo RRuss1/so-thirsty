@@ -209,7 +209,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 
 The only thing that ever posts to chat, and only on a click.
 
-- A small button with the drink icon; drag it any time. Shown when my role is Healer and I'm grouped (`show = "healer"`; also `"always"` / `"never"`). Its border takes my own mana color.
+- A small button with the drink icon; drag it whenever it shows. Shown **only** when my role is Healer and I'm grouped (`show = "healer"`, or `"never"`): never solo, never for another role, not even while placing or previewing. An old `"always"` counts as `"healer"`. Its border takes my own mana color.
 - **Left-click:** `{name} needs a drink - hold the pull`. **Right-click:** `{name} is good to go`. Both editable; tokens `{name}`, `{class}`. `{name}` is "First Surname" or the first name only (`button.surname`, default on; Q29). Tag `[Thirsty]` (`button.prefix`).
 - **Channel** by group type: `INSTANCE_CHAT`, else `RAID`, else `PARTY`. Three checks (`party`, `raid`, `instance`) say where a click may post.
 - **Hard rules:** `Levels.ButtonAllowed`; never in combat; never in battlegrounds or arenas. A refused click prints why, locally.
@@ -234,7 +234,7 @@ Previews happen on the real indicators, not on a stand-in inside the window. Sam
 
 - Opening the Flask, Banner or Screen glow tab shows that indicator's sample, so each can be tuned without a group.
 - **Play** (`/sot test`) goes on screen (below) and runs all five from 100% down to 0%, through a drink, and back to the resting sample. Nothing is posted.
-- **Preview on screen** (bottom right of the window, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of the healers in the group, or on the player's own frame when there are none (`Frames.Demo`, plain numbers only). The flask, banner and drink button get their purple plates for dragging. A small draggable bar stays up with two buttons: **Play** and **Back to Options**. Unsaved changes ride along both ways. `/sot` also brings the window back. It won't start in combat, and a fight ends it like closing the window (nothing of ours shows in combat).
+- **Preview on screen** (bottom right of the window, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of the healers in the group, or on the player's own frame when there are none (`Frames.Demo`, plain numbers only). The flask and banner get their purple plates for dragging. A small draggable bar stays up with two buttons: **Play** and **Back to Options**. Unsaved changes ride along both ways. `/sot` also brings the window back. It won't start in combat, and a fight ends it like closing the window (nothing of ours shows in combat).
 
 ### 9.3 Blizzard assets first
 
@@ -323,7 +323,7 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | `/sot bar` / `pips` / `flask` / `banner` / `glow` | Switches one indicator on or off |
 | `/sot drink` / `ready` | Same as clicking the button |
 | `/sot macro` | Makes the two macros |
-| `/sot move` / `lock` | Shows the flask, banner and button for placing |
+| `/sot move` / `lock` | Shows the flask and banner for placing |
 | `/sot test` | Plays the preview |
 | `/sot ghost 35` | Window art strength |
 | `/sot minimap` | Shows / hides the minimap button |

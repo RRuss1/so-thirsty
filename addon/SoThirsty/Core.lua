@@ -24,7 +24,7 @@ local DB_DEFAULTS = {
     vignette = { enabled = false, strength = 35, width = "medium", custom = false, color = { 0.31, 0.76, 0.97, 1 } },
     -- The drink button: the only thing that posts to chat (spec 8.6).
     button = {
-      show = "healer",              -- "healer" | "always" | "never"
+      show = "healer",              -- "healer" (my role is Healer, in a group) | "never"
       party = true, raid = true, instance = true,
       prefix = true,
       surname = true,               -- {name} is "First Surname" (false: first name only)

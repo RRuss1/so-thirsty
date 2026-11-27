@@ -65,7 +65,7 @@ It posts to party, raid or instance chat, whichever your group uses. Limits: 15 
 | `/sot bar` / `pips` / `flask` / `banner` / `glow` | Switch one indicator on or off |
 | `/sot drink` / `ready` | Same as clicking the drink button |
 | `/sot macro` | Make action-bar macros for the two chat lines |
-| `/sot move` / `lock` | Show the flask, banner and button so you can drag them into place |
+| `/sot move` / `lock` | Show the flask and banner so you can drag them into place |
 | `/sot test` | Play the preview (nothing is posted) |
 | `/sot ghost 35` | How strongly the art shows behind windows (0 = off) |
 | `/sot minimap` | Show or hide the minimap button |

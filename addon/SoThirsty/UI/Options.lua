@@ -340,7 +340,8 @@ local function tabList()
     } },
     { "button", L.TAB_BUTTON, {
       { "head", L.TAB_BUTTON },
-      cycle(L.OPT_BUTTON_SHOW, buttonCfg, "show", { "healer", "always", "never" }, L.BUTTON_SHOW),
+      { "check", L.OPT_BUTTON_SHOW, function() return buttonCfg().show ~= "never" end,
+        function(v) buttonCfg().show = v and "healer" or "never" end },
       check(L.CHANNEL_party, buttonCfg, "party"),
       check(L.CHANNEL_raid, buttonCfg, "raid"),
       check(L.CHANNEL_instance, buttonCfg, "instance"),

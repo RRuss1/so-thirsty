@@ -147,11 +147,11 @@ function Button.Tint()
   end
 end
 
+-- Only for a healer, in a group: my role is Healer and there is a group to talk to. Not
+-- while placing or previewing either; a healer can drag it whenever it shows.
 local function wanted(s)
-  if ns.unlocked then return true end
   if not s.enabled or s.button.show == "never" then return false end
   if not ns.ChatChannel() or not ns.ZoneOk() then return false end
-  if s.button.show == "always" then return true end
   local role = UnitGroupRolesAssigned("player")
   return not ns.IsSecret(role) and role == "HEALER"
 end

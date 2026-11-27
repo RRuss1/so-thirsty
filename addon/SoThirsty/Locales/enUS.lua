@@ -16,7 +16,7 @@ ns.L = {
     "  /sot bar | pips | flask | banner | glow: switch one indicator on or off",
     "  /sot drink | ready: post \"I need a drink\" or \"good to go\" to your group (same as the button)",
     "  /sot macro: make action-bar macros for those two lines (or bind keys under Key Bindings > AddOns)",
-    "  /sot move | lock: show the flask, banner and drink button so you can drag them into place",
+    "  /sot move | lock: show the flask and banner so you can drag them into place",
     "  /sot test: play the preview (nothing is posted to chat)",
     "  /sot ghost 35: how strongly the art shows behind windows (0 = off)",
     "  /sot minimap: show or hide the minimap button",
@@ -40,7 +40,7 @@ ns.L = {
   -- /sot ghost, move
   GHOST_USAGE = "Usage: /sot ghost 35 (0 to 100; 0 turns the background art off).",
   GHOST_SET = "Window background art: %d%%.",
-  MOVE_ON = "Placing: drag the flask, the banner and the drink button by their purple plates. Type /sot lock when done.",
+  MOVE_ON = "Placing: drag the flask and the banner by their purple plates. Type /sot lock when done.",
   MOVE_OFF = "Done placing.",
 
   -- /sot status
@@ -134,8 +134,7 @@ ns.L = {
   NOTE_GLOW = "A soft haze on the edges of your screen as a healer runs dry. It uses the level colors unless you pick your own. Off unless you turn it on.",
 
   -- options: drink button
-  OPT_BUTTON_SHOW = "Show the button",
-  BUTTON_SHOW = { healer = "When I'm the healer", always = "Whenever I'm grouped", never = "Never" },
+  OPT_BUTTON_SHOW = "Show the button (only when I'm the healer, in a group)",
   OPT_PREFIX = "Start the line with [Thirsty]",
   OPT_LINE_THIRSTY = "Need a drink",
   OPT_LINE_READY = "Good to go",
@@ -173,7 +172,7 @@ ns.L = {
   PREVIEW_PLAY = "Play",
   PREVIEW_SCREEN = "Preview on screen",
   PREVIEW_BACK = "Back to Options",
-  SCREEN_ON = "Preview on screen: every indicator shows where it really sits. Drag the flask, banner and drink button by their purple plates. Click Back to Options when done.",
+  SCREEN_ON = "Preview on screen: every indicator shows where it really sits. Drag the flask and banner by their purple plates. Click Back to Options when done.",
   SCREEN_COMBAT = "The preview stays closed in combat.",
 
   -- minimap button and its menu
@@ -185,7 +184,7 @@ ns.L = {
   M_READY = "Good to go",
   M_MACRO = "Make action-bar macros",
   M_ENABLED = "So Thirsty is on",
-  M_PLACE = "Show the flask, banner and button to place them",
+  M_PLACE = "Show the flask and banner to place them",
   M_TEST = "Play the preview",
   M_STATUS = "Healer status",
   M_HELP = "Command list",

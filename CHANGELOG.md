@@ -12,8 +12,9 @@ The first group test showed the frame glow hiding under aggro borders, and the o
 - The banner and the drink button's chat line show the healer's first name and surname, or the first name only (a setting on each tab).
 - The flask, banner and screen glow work with party frames hidden.
 - **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left (General first), one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
-- **Preview on screen:** tucks the Options window away and shows every indicator where it really sits, with the flask, banner and drink button ready to drag. A small bar stays up with **Play** and **Back to Options**. Replaces the preview box in the window and the "Place it" buttons.
+- **Preview on screen:** tucks the Options window away and shows every indicator where it really sits, with the flask and banner ready to drag. A small bar stays up with **Play** and **Back to Options**. Replaces the preview box in the window and the "Place it" buttons.
 - **Removed:** tint, glow, border, corners and bar-strip looks; the pulse, nudge brighten, ready tick, range fade and grey edge; the thirst meter; the Ready level; color-band modes; feel presets; and all their settings. `/sot meter` is gone; `/sot bar`, `pips`, `flask`, `banner`, `glow` are new.
+- The drink button shows only for a healer in a group: never solo, never for another role. The "whenever I am grouped" choice is gone.
 - Old settings are migrated: levels, colors, the drink button, zones and the minimap button carry over.
 - `/sot debug looks` checks the three things not yet proven on this client (spec 16 Q25–Q27). The old probes (`debug mana`, `curve`, `swatch`, `window`, `party`) are removed; their answers are in the spec.
 
