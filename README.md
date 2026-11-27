@@ -15,7 +15,7 @@ Each one is a single switch. Use any mix.
 | **Mana bar** | The healer's own mana bar on their party/raid frame turns yellow, orange, then red | on |
 | **Pips** | Dots on the healer's frame: one below 50%, two below 30%, three below 10% | on |
 | **Flask** | A flask on your screen for each healer, like a mana bar: the liquid drains with their mana, and the edge goes from their class color to yellow, orange, red. Several healers line up in a row or a column, and you can place them as one stack or one by one. Can be set to hide while they're fine | on |
-| **Banner** | Five seconds after a fight, a low healer's name appears in their level color for a few seconds | on |
+| **Banner** | Five seconds after a fight, a line like "Lira's mana is at 30%" appears for a low healer, in their level color, for a few seconds | on |
 | **Screen glow** | A soft haze on the edges of your screen as a healer runs dry, in the level colors or one color you pick | off |
 
 - A healer who is **drinking** shows dimmed, with a drink mark.
@@ -24,7 +24,7 @@ Each one is a single switch. Use any mix.
 
 ## Good to know
 
-- **The game hides mana numbers from addons** on Forever. So Thirsty can show mana as color and fill, but it can't know the number. That's why there are no automatic chat warnings and no percentages.
+- **The game hides mana numbers from addons** on Forever. So Thirsty can show mana as color and fill, but it can't know the number. That's why there are no automatic chat warnings. The one percentage, on the banner, is printed by the game itself; the addon never sees it.
 - **Each player who wants the indicators needs the addon.** They're drawn on your own screen.
 - It works with the game's own party and raid frames. ElvUI, Cell, Grid2 and VuhDo are planned.
 

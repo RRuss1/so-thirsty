@@ -84,6 +84,14 @@ function Curves.Fraction(unit)
   return pcall(unitPct, unit, manaType(), false, scale)
 end
 
+-- Returns ok, then the unit's mana as a secret 0-100 number, only ever for the game to
+-- print (the banner's "mana is at x%", spec 16 Q28). The addon never learns it.
+function Curves.Percent(unit)
+  local scale = _G.CurveConstants and _G.CurveConstants.ScaleTo100
+  if not unitPct or not scale then return false end
+  return pcall(unitPct, unit, manaType(), false, scale)
+end
+
 -- Everything an indicator needs for one unit, in the same order as Levels.Plain:
 -- ok, fraction, r, g, b, alpha, low, pip1, pip2, pip3. All secret except ok.
 function Curves.All(unit)

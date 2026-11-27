@@ -80,6 +80,7 @@ end
 --   Q25 is the unit frame's own power bar reachable (the mana bar color sits on it)?
 --   Q26 does a vertical bar filled with an icon take the hidden mana fraction (the flask)?
 --   Q27 can text be colored and faded from hidden values (banner and flask names)?
+--   Q28 will the game print the hidden mana percent into text (the banner's "is at x%")?
 function ns.DebugLooks()
   ns.Print(L.DEBUG_LOOKS_HEADER)
   local Curves = ns.Curves
@@ -104,6 +105,9 @@ function ns.DebugLooks()
       flag("Q27 text SetTextColor", pcall(text.SetTextColor, text, r, g, b))
       flag("Q27 text SetAlpha", pcall(text.SetAlpha, text, low))
       flag("pip SetAlpha", pcall(text.SetAlpha, text, p1))
+      local okP, pct = Curves.Percent(unit)
+      line("Q28 percent (ScaleTo100)", okP and "ok" or "failed")
+      if okP then flag("Q28 text SetFormattedText", pcall(text.SetFormattedText, text, L.BANNER_LINE, unit, pct)) end
     end
     line("drink buff match (true / false / nil = hidden)", ns.Drink.AuraMatch(unit))
   end

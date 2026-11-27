@@ -9,12 +9,13 @@ local Levels, Theme, Curves = ns.Levels, ns.Theme, ns.Curves
 local Banner = {}
 ns.Banner = Banner
 
-local WIDTH, LINE, MAX_LINES = 260, 26, 8
+local WIDTH, LINE, MAX_LINES = 320, 26, 8
 local frame
 local lines = {}
 local hideTimer
 local samplePct = 25     -- the mana the placing sample shows (the preview can set it)
-local textWorks = true  -- set false if this client won't color or fade text from hidden values
+local numberWorks = true -- set false if this client won't print a hidden number in text
+local textWorks = true -- set false if this client won't color or fade text from hidden values
 
 local function buildLine(i)
   local line = CreateFrame("Frame", nil, frame)
@@ -22,7 +23,7 @@ local function buildLine(i)
   line:SetPoint("TOP", 0, -(i - 1) * LINE)
   line.icon = line:CreateTexture(nil, "ARTWORK")
   line.icon:SetSize(LINE - 4, LINE - 4)
-  line.icon:SetPoint("RIGHT", line, "CENTER", -60, 0)
+  line.icon:SetPoint("LEFT", line, "LEFT", 4, 0)
   line.icon:SetTexture(Theme.ICONS.drop)
   line.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
   -- A colored bar under the name: it carries the color even if text can't.
@@ -30,7 +31,7 @@ local function buildLine(i)
   line.bar:SetTexture("Interface\\Buttons\\WHITE8x8")
   line.bar:SetHeight(3)
   line.bar:SetPoint("BOTTOMLEFT", line.icon, "BOTTOMRIGHT", 6, 0)
-  line.bar:SetWidth(150)
+  line.bar:SetWidth(WIDTH - LINE - 10)
   line.text = line:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   line.text:SetPoint("LEFT", line.icon, "RIGHT", 6, 1)
   line.text:SetJustifyH("LEFT")
@@ -52,6 +53,16 @@ local function paint(line, _, r, g, b, _, low)
     if not ok then textWorks = false end
   end
   line.text:SetShown(textWorks)
+end
+
+-- Writes "<name>'s mana is at x%". The game prints the number from the hidden value; if
+-- this client refuses (spec 16 Q28), or there is no number, the line is just the name.
+local function write(line, name, hasPct, pct)
+  if numberWorks and hasPct then
+    if pcall(line.text.SetFormattedText, line.text, L.BANNER_LINE, name, pct) then return end
+    numberWorks = false
+  end
+  line.text:SetText(name)
 end
 
 local function build()
@@ -109,7 +120,7 @@ end
 local function showSample(s, pct)
   local line = lines[1] or buildLine(1)
   line:Show()
-  line.text:SetText(L.PREVIEW_NAME)
+  write(line, L.PREVIEW_NAME, true, pct)
   paint(line, Levels.Plain(pct, s))
   for i = 2, #lines do lines[i]:Hide() end
   frame:SetHeight(LINE)
@@ -131,7 +142,7 @@ function Banner.Show(list)
         count = count + 1
         local line = lines[count] or buildLine(count)
         line:Show()
-        line.text:SetText(ns.Roster.DisplayName(h))
+        write(line, ns.Roster.DisplayName(h), Curves.Percent(h.unit))
         paint(line, fraction, r, g, b, a, low)
       end
     end

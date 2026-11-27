@@ -192,6 +192,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
 - Once per fight (Section 7), near the top of the screen: one line per healer with the drink icon, their name and a colored underline. Color from the color curve; visibility from `low`. Hides after `banner.hold` seconds or when combat starts.
+- **Wording:** `<name>'s mana is at x%`. The number is never known to the addon: `Curves.Percent` gets the secret 0–100 value and hands it straight to `SetFormattedText`, so the game prints it (Q28). It is the number as of the moment the banner appears; it doesn't tick. If the client refuses, the line is just the name.
 - If the client won't color or fade text from hidden values (Q27), the name is dropped and the icon and underline still show.
 - Our own frame. Up to 8 lines.
 - Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size. Placed like the flask.
@@ -342,7 +343,7 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 - Curves are rebuilt only when a level or color changes.
 - No `OnUpdate`, with one exception: the minimap button while it is being dragged. Timers use `C_Timer`.
 - No motion in v3: nothing pulses or animates. If motion returns, it must not use an Alpha/Scale `AnimationGroup` over mana-driven textures (Section 2).
-- **Secrets:** never compare, branch on or do math with one. Test only the `ok` flag `Curves` returns. Pass secrets only to `SetAlpha`, `SetVertexColor`, `SetTextColor`, `SetValue`.
+- **Secrets:** never compare, branch on or do math with one. Test only the `ok` flag `Curves` returns. Pass secrets only to `SetAlpha`, `SetVertexColor`, `SetTextColor`, `SetValue`, and (the banner's percent) `SetFormattedText`.
 - Every unproven setter is called through `pcall`, with a plain fallback, so a refusal degrades instead of erroring.
 - All player-facing text in `Locales/enUS.lua`. `.luacheckrc` lists every WoW API used.
 - Free, unobfuscated, ad-free (Blizzard UI Add-On Development Policy).
@@ -405,6 +406,7 @@ Open for design v3 (tested by `/sot debug looks`):
 25. Is the unit frame's own power bar reachable (`powerBar` / `PowerBar` / `manabar` / `ManaBar`), showing, and the size we expect? The mana bar color sits on it.
 26. Does a **vertical** `StatusBar` using an icon as its fill texture take the secret mana fraction, and is the icon cropped (not squashed) as it drains? The flask depends on it.
 27. Do `FontString:SetTextColor` and `FontString:SetAlpha` take secret values? The banner and the flask names depend on it.
+28. Does `UnitPowerPercent(unit, Mana, false, CurveConstants.ScaleTo100)` return a (secret) 0–100 number, and does `FontString:SetFormattedText("%s's mana is at %.0f%%", name, secret)` print it? The banner's wording depends on it. `/sot debug looks` checks both. If not, the banner line is just the name.
 
 Questions 3, 4, 6 and 16 still matter. Questions 9, 10, 12, 13 and 15 belonged to the v1 design (addon messages, sounds, mana-rise, chat-listen), and 21 to v2's range fade; they no longer apply.
 
