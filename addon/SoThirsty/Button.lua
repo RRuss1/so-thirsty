@@ -30,8 +30,13 @@ end
 function Button.Line(kind)
   local s = ns.Settings()
   local template = kind == "ready" and (s.button.readyMsg or L.MSG_READY) or (s.button.thirstyMsg or L.MSG_THIRSTY)
-  local name = UnitName("player")
-  if ns.IsSecret(name) or not name then name = "Healer" end
+  -- On Forever the surname is UnitName's second value (spec 16 Q29).
+  local name, surname = UnitName("player")
+  if ns.IsSecret(name) or not name then
+    name = "Healer"
+  elseif s.button.surname and type(surname) == "string" and not ns.IsSecret(surname) and surname ~= "" then
+    name = name .. " " .. surname
+  end
   local _, class = UnitClass("player")
   if ns.IsSecret(class) then class = nil end
   local line = Levels.Message(template, name, class)

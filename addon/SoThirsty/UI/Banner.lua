@@ -142,7 +142,7 @@ function Banner.Show(list)
         count = count + 1
         local line = lines[count] or buildLine(count)
         line:Show()
-        write(line, ns.Roster.DisplayName(h, true), Curves.Percent(h.unit))
+        write(line, ns.Roster.DisplayName(h, s.banner.surname), Curves.Percent(h.unit))
         paint(line, fraction, r, g, b, a, low)
       end
     end

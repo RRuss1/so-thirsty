@@ -192,10 +192,10 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
 - Once per fight (Section 7), near the top of the screen: one line per healer with the drink icon, their name and a colored underline. Color from the color curve; visibility from `low`. Hides after `banner.hold` seconds or when combat starts.
-- **Wording:** `<First Surname>'s mana is at x%` (Q29). The number is never known to the addon: `Curves.Percent` gets the secret 0–100 value and hands it straight to `SetFormattedText`, so the game prints it (Q28). It is the number as of the moment the banner appears; it doesn't tick. If the client refuses, the line is just the name.
+- **Wording:** `<First Surname>'s mana is at x%` (Q29). `banner.surname` (default on) picks first name and surname, or first name only. The number is never known to the addon: `Curves.Percent` gets the secret 0–100 value and hands it straight to `SetFormattedText`, so the game prints it (Q28). It is the number as of the moment the banner appears; it doesn't tick. If the client refuses, the line is just the name.
 - If the client won't color or fade text from hidden values (Q27), the name is dropped and the icon and underline still show.
 - Our own frame. Up to 8 lines.
-- Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size. Placed like the flask.
+- Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size, name shown. Placed like the flask.
 - **Placing** (`/sot move`, or the on-screen preview, Section 9.2) shows a sample with a purple plate to drag. It ends with `/sot lock`, or when the on-screen preview or the Options window closes. An indicator that is switched off shows nothing, placing or not.
 
 ### 8.5 Screen-edge glow (`UI/Vignette.lua`, `settings.vignette`, **off** by default)
@@ -210,7 +210,7 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 The only thing that ever posts to chat, and only on a click.
 
 - A small button with the drink icon; drag it any time. Shown when my role is Healer and I'm grouped (`show = "healer"`; also `"always"` / `"never"`). Its border takes my own mana color.
-- **Left-click:** `{name} needs a drink - hold the pull`. **Right-click:** `{name} is good to go`. Both editable; tokens `{name}`, `{class}`. Tag `[Thirsty]` (`button.prefix`).
+- **Left-click:** `{name} needs a drink - hold the pull`. **Right-click:** `{name} is good to go`. Both editable; tokens `{name}`, `{class}`. `{name}` is "First Surname" or the first name only (`button.surname`, default on; Q29). Tag `[Thirsty]` (`button.prefix`).
 - **Channel** by group type: `INSTANCE_CHAT`, else `RAID`, else `PARTY`. Three checks (`party`, `raid`, `instance`) say where a click may post.
 - **Hard rules:** `Levels.ButtonAllowed`; never in combat; never in battlegrounds or arenas. A refused click prints why, locally.
 - **Keys:** `/sot macro` makes "SoT Drink" and "SoT Ready" macros (out of combat, if missing) and puts the first on the cursor. `Bindings.xml` adds both under Key Bindings > AddOns.
@@ -306,9 +306,9 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
 | **Flask** | Show this; hide while mana is fine; opacity; size; show names; row or column; stack or one by one; preview and place on screen |
-| **Banner** | Show this; how long after the fight; how long it stays; size; preview and place on screen |
+| **Banner** | Show this; how long after the fight; how long it stays; size; name shown (first and surname / first only); preview and place on screen |
 | **Screen glow** | Show this; strength; width; use my own color; the color |
-| **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; the two lines; make macros |
+| **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; name shown; the two lines; make macros |
 
 - **Save / Undo changes.** A change shows at once, on the preview and for real, so it can be judged. It only sticks on **Save**. **Undo changes** returns to the last save. Closing with unsaved changes undoes them and says so in chat. Where things were dragged to always sticks. Slash commands apply at once.
 - Also reachable from Esc > Options > AddOns.

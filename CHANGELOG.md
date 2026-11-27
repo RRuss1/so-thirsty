@@ -9,6 +9,7 @@ The first group test showed the frame glow hiding under aggro borders, and the o
 - **Flask:** a flask per healer anywhere on screen, always showing like a mana bar (or only when low, as an option). It drains with their mana; its edge goes from class color to the level colors. Has an opacity setting. Several healers line up in a row or a column, placed as one stack or one flask at a time.
 - **After-fight banner:** 5 seconds after a fight, "Name's mana is at x%" for a low healer, in their level color (the game prints the number; not yet proven on this client, spec 16 Q28). Skipped on chain pulls, after a wipe and for a drinking healer.
 - **Screen-edge glow:** a soft haze on the screen edges, in the level colors or one color of your own. Off by default.
+- The banner and the drink button's chat line show the healer's first name and surname, or the first name only (a setting on each tab).
 - The flask, banner and screen glow work with party frames hidden.
 - **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left (General first), one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
 - **Preview on screen:** tucks the Options window away and shows every indicator where it really sits, with the flask, banner and drink button ready to drag. A small bar stays up with **Play** and **Back to Options**. Replaces the preview box in the window and the "Place it" buttons.
