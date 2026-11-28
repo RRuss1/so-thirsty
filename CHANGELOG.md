@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.0 — Five indicators (unreleased, not yet tested in a group)
+
+The first group test showed the frame glow hiding under aggro borders, and the options had piled up. The frame looks are gone, replaced by five indicators with one switch each.
+
+- **Mana bar color:** the healer's own mana bar on their frame turns yellow, orange, then red below level 1.
+- **Pips:** dots on the healer's frame, one per level reached.
+- **Flask:** a flask per healer anywhere on screen, always showing like a mana bar (or only when low, as an option). It drains with their mana; its edge goes from class color to the level colors. Has an opacity setting. Several healers line up in a row or a column, placed as one stack or one flask at a time. **Simple view** swaps the icons for plain bars side by side, for a quick read of every healer in a raid.
+- **After-fight banner:** 5 seconds after a fight, "Name's mana is at x%" for a low healer, in their level color (the game prints the number; not yet proven on this client, spec 16 Q28). Skipped on chain pulls, after a wipe and for a drinking healer.
+- **Screen-edge glow:** a soft haze on the screen edges, in the level colors or one color of your own. Off by default.
+- The banner and the drink button's chat line show the healer's first name and surname, or the first name only (a setting on each tab).
+- The flask, banner and screen glow work with party frames hidden.
+- **Options window rebuilt:** bigger (900 × 660) and sparser so the art shows, tabs down the left (General first), one short tab per indicator. Opening the Flask, Banner or Screen glow tab shows a sample of it. Save / Undo changes kept.
+- **Preview on screen:** tucks the Options window away and shows every indicator where it really sits, with the flask and banner ready to drag. A small bar stays up with **Play** and **Back to Options**. Replaces the preview box in the window and the "Place it" buttons.
+- **Removed:** tint, glow, border, corners and bar-strip looks; the pulse, nudge brighten, ready tick, range fade and grey edge; the thirst meter; the Ready level; color-band modes; feel presets; and all their settings. `/sot meter` is gone; `/sot bar`, `pips`, `flask`, `banner`, `glow` are new.
+- The drink button shows only for a healer in a group: never solo, never for another role. The "whenever I am grouped" choice is gone.
+- Old settings are migrated: levels, colors, the drink button, zones and the minimap button carry over.
+- `/sot debug looks` checks the three things not yet proven on this client (spec 16 Q25–Q27). The old probes (`debug mana`, `curve`, `swatch`, `window`, `party`) are removed; their answers are in the spec.
+
+## v0.3.0 — Design v2: the glow (unreleased, superseded by v0.4.0)
+
+In-game tests showed that Forever always hides mana from addons, so the first design (read mana, post chat warnings) can't exist. Design v2 showed mana as a glow on healer frames and added a manual chat button.
+
+- **Kept in v0.4.0:** the curve engine (`Curves.lua`), healer tracking, drink detection, the combat gate, the **drink button** (one line per click, 15 s apart, 3 per 5 minutes, `[Thirsty]` tag, macros and key bindings), the **minimap button** with its right-click command menu, Save / Undo in Options, and the black-and-white art behind windows.
+- **Found in game:** curves work on party members' mana; drink buffs are readable ("Drink", spell 1135); fade animations override a texture's own transparency, so they can't be used over mana-driven art.
+- **Dropped in v0.4.0:** the glow and every other frame look, and the thirst meter.
+
 ## v0.2.0 — Logic (unreleased)
 
 - `Levels.lua`: the warning-level state machine (spec 6.2). Pure, with tests for every rule in spec 6.3.

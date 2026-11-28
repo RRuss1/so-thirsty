@@ -12,12 +12,11 @@ local ICON = MEDIA .. "logo-128"
 -- client lacks it, art/fallback/ has addon-made backgrounds; spec 16 Q16.)
 local WINDOW_BG = { file = "Interface\\FrameGeneral\\UI-Background-Rock", tint = { 0.45, 0.3, 0.58, 1 } }
 local PANEL_BG = { file = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark", tint = { 0.6, 0.45, 0.75, 0.9 } }
--- The icon, greyscaled, softened and faded at the edges (Media/ghost.tga): a faint ghost of
--- the waterskin behind every window's content. Tinted toward the violet; strength is
--- settings.look.ghost (0-100 %, 0 = off).
+-- The logo in black and white (Media/ghost.tga, from art/SoThirstyIconPublic.jpeg): a faint ghost of it
+-- fills every window's content panel. Strength is settings.ghost (0-100 %, 0 = off).
 local GHOST = MEDIA .. "ghost"
-local GHOST_TINT = { 0.85, 0.78, 1 }
-local GHOST_DEFAULT = 25
+local GHOST_TINT = { 1, 1, 1 } -- plain black and white
+local GHOST_DEFAULT = 35
 
 local COLORS = {
   header = { 0.06, 0.03, 0.08, 0.8 },    -- darkens the title strip (shadowed plum)
@@ -216,18 +215,24 @@ function ns.CreateWindow(name, width, height, title)
   tiled(content, "BACKGROUND", PANEL_BG):SetAllPoints()
   edge(content, "BORDER", COLORS.goldEdge, 0)
 
-  -- Over the panel, under every text and control. A square a bit taller than the panel; its
-  -- edges are already transparent, so any overflow vanishes (and it's clipped to the panel).
+  -- Over the panel, under every text and control. The square picture fills the whole panel:
+  -- it's cropped (not squashed) on whichever side the panel is shorter.
   content:SetClipsChildren(true)
   local ghost = content:CreateTexture(nil, "BACKGROUND", nil, 2)
   ghost:SetTexture(GHOST)
-  local side = (height - 2 * MARGIN - 50) * 1.15
-  ghost:SetSize(side, side)
-  ghost:SetPoint("CENTER")
+  ghost:SetAllPoints()
+  local cw, ch = width - 2 * (MARGIN + 4), height - 2 * MARGIN - 50
+  if cw >= ch then
+    local cut = (1 - ch / cw) / 2
+    ghost:SetTexCoord(0, 1, cut, 1 - cut)
+  else
+    local cut = (1 - cw / ch) / 2
+    ghost:SetTexCoord(cut, 1 - cut, 0, 1)
+  end
   function f.SetGhost(_, percent)
     if percent == nil then
-      local look = SoThirstyDB and SoThirstyDB.settings and SoThirstyDB.settings.look
-      percent = look and look.ghost or GHOST_DEFAULT
+      local settings = SoThirstyDB and SoThirstyDB.settings
+      percent = settings and settings.ghost or GHOST_DEFAULT
     end
     ghost:SetVertexColor(GHOST_TINT[1], GHOST_TINT[2], GHOST_TINT[3], percent / 100)
     ghost:SetShown(percent > 0)

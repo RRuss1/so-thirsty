@@ -1,6 +1,5 @@
--- "Is the healer already drinking?" (spec 6.4). The aura half lives here; the mana-rise half
--- and the final decision are pure, in Levels.IsDrinking. Auras are only scanned when asked
--- (an alert window closing, /sot status, /sot debug drink), never on UNIT_AURA.
+-- "Is the healer drinking?" (spec 6.4): a drink buff on them. Roster.lua asks on a
+-- coalesced UNIT_AURA for tracked healers, out of combat only.
 local _, ns = ...
 local L = ns.L
 
@@ -8,7 +7,9 @@ local Drink = {}
 ns.Drink = Drink
 
 -- Drink buff spell IDs, filled in as /sot debug drink finds them on Forever (spec 16 Q11).
-Drink.SPELL_IDS = {}
+Drink.SPELL_IDS = {
+  [1135] = true, -- "Drink" (Moonberry Juice), seen with /sot debug drink
+}
 
 local drinkNames
 local function isDrinkName(name)

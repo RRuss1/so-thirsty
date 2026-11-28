@@ -1,577 +1,318 @@
 # SoThirsty — Design Spec & Build Brief
 
-> **For Claude Code (VS Code):** This is the source of truth for the SoThirsty addon. Read all of it before you write any code. Build in the phases in Section 15, and finish and test each phase before you start the next. If something in this spec is unclear, or a Forever API behaves differently than described here, **ask Rich or add the question to Section 16. Don't guess.**
+> **For Claude Code (VS Code):** This is the source of truth for the SoThirsty addon. Read all of it before you write any code. If something here is unclear, or a Forever API behaves differently than described, **ask Rich or add the question to Section 16. Don't guess.**
 >
-> The house style comes from `C:\Users\goret\Desktop\DEV\bounty-line`. Read that repo's `CLAUDE.md`, `.luacheckrc`, `.pkgmeta`, `.github/workflows/`, `addon/BountyLine/Core.lua`, `Debug.lua`, `UI/Options.lua`, `UI/Window.lua`, `Locales/enUS.lua` and `addon/tests/logic.lua`, and mirror their patterns. Section 3 lists what to copy and what to leave out.
+> **Design v3.** v1 read healers' mana and posted chat warnings; Forever always hides mana from addons, so it couldn't exist. v2 drew a glow on party frames; in game the edge styles hid under aggro borders and the options piled up. v3 keeps v2's engine (curves) and replaces the looks with **five indicators**, each with one switch and very few options.
 
 ---
 
 ## 1. What it is
 
-**SoThirsty** is a lightweight in-game addon for **WoW: Forever**. It tells the group when a **healer's mana is low**, so the tank waits for the healer to drink before the next pull.
+**SoThirsty** is a lightweight in-game addon for **WoW: Forever**. It shows when a **healer's mana is low**, so the tank waits for the healer to drink before the next pull.
 
-- **Only one person in the group needs it.** Any player with the addon watches every healer in the party or raid, including healers who don't have it. If several people have it, they agree on a single poster, so the group sees each warning once (Section 11).
-- It watches every group member whose **assigned role is Healer**, using the game's "Set Role" / role check.
-- It has **three warning levels**: 50%, 30% and 10% by default. Each level can be changed or turned off.
-- It speaks **once, 10 seconds after combat ends**, and only if the healer is below a level **and isn't already drinking**. Nothing fires mid-fight.
-- It shows warnings three ways, each one customizable (Section 9):
-  1. A **colored highlight** on the healer's party/raid frame.
-  2. An **on-screen banner** (SoThirsty's own, never the raid-warning frame), seen only by the local player.
-  3. An optional **group chat line** in party, raid and/or instance chat (chosen per level), so players without the addon see it too. Never raid warnings.
-- It is **in-game only**. It has no Discord integration, no Worker, no relay and no network requests.
+- **Five indicators**, each on or off (Section 8): the healer's **mana bar changes color**, **pips** on their frame, a **draining flask**, an **after-fight banner**, and a **screen-edge glow**.
+- It's **silent and automatic**. Nothing is posted to chat or played as a sound on its own.
+- It works **out of combat**. Everything hides during fights.
+- A healer who is **drinking** shows dimmed, with a drink mark.
+- A manual **drink button** posts one line to group chat when a person clicks it. That is the only way SoThirsty ever speaks.
+- It watches every group member whose **assigned role is Healer**.
+- **Each player who wants the indicators needs the addon.** Three of the five work even with party frames hidden.
+- **In-game only.** No Discord, no network, no addon-to-addon messages.
 
-**Name and branding**
-
-- Display name: **So Thirsty**
-- Folder and internal name: `SoThirsty`
-- Slash commands: `/thirsty` and `/sot`
-- Chat prefix color: water blue `|cff4fc3f7`
+**Name and branding:** display name **So Thirsty**; folder `SoThirsty`; slash commands `/thirsty` and `/sot`; chat prefix color water blue `|cff4fc3f7`; chat tag `[Thirsty]`.
 
 ### 1.1 The quiet contract: informative, never annoying
 
-These rules beat every other setting. If a feature would break one of them, the rule wins.
+These rules beat every setting.
 
-1. **One alert window per fight.** Warnings are evaluated once, `settleSeconds` (default **10 s**) after the group leaves combat. If combat restarts inside the window, the window is cancelled and nothing is said.
-2. **Drinking means quiet.** If the healer is already drinking at the end of the window, say nothing (Section 6.4).
-3. **Escalation only.** A level is announced at most once per drain cycle. A later warning must be deeper than the last one. Same level twice = silence.
-4. **One chat line per window, for the whole group.** If several healers are low, they're merged into one line.
-5. **One poster per group.** Only the elected addon user posts to chat (Section 11). Everyone else stays local.
-6. **Hard cap.** At most **3 SoThirsty chat lines per 5 minutes** from any one client. Past the cap, warnings go local only, and the player sees a one-time local notice.
-7. **Ready is quiet by default.** "Good to go" clears the frame highlight and shows locally, but doesn't post to chat unless the player turns it on.
-8. **Wipes are quiet.** After a group wipe, everyone is low and everyone knows it. Stay silent until the next combat ends.
-9. **Snooze is one click.** `/sot snooze`, the compartment menu, or a right-click on the banner silences chat for 30 minutes (or the rest of the instance).
+1. **Silent by default.** SoThirsty never posts to chat and never plays a sound on its own.
+2. **Out of combat.** Every indicator hides in combat, and in battlegrounds and arenas.
+3. **One after-fight moment.** `banner.delay` (default **5 s**) after the group leaves combat, the banner shows once. Cancelled if combat restarts. None after a wipe.
+4. **Drinking means dim.** A drinking healer's indicators dim to 35% and they're left off the banner.
+5. **Chat only when a person clicks.** The drink button posts **one line per click**, 15 s apart, at most **3 lines per 5 minutes**. Never in combat, never in battlegrounds or arenas, never to SAY, YELL or RAID_WARNING.
+6. **No raid warnings.** Never `RaidWarningFrame` / `RaidNotice_AddMessage`.
+7. **Never work around a secret.** The addon never tries to recover a hidden number (no reading text back, no measuring bars, no pixel tricks). It only hands secret values to the game functions built to take them.
+8. **Few options.** Each indicator gets one switch and at most a handful of its own settings. A new option needs a reason.
 
 ---
 
 ## 2. Target client
 
-Same as Bounty Line:
-
-- **WoW: Forever, Interface `16001`.** Ship **both** `SoThirsty_Forever.toc` and `SoThirsty.toc` with the same contents, the same way Bounty Line does.
-- **The client is a modern Midnight-based client with restrictions:**
-  - **Secret values:** unit data, including other players' power, health and auras, can be hidden as secret values, especially in combat. Always check with `issecretvalue` through an `ns.IsSecret` helper. Never do math on a secret value. Skip it and degrade gracefully.
-  - `COMBAT_LOG_EVENT_UNFILTERED` is forbidden. SoThirsty doesn't need it.
-  - Addon comms (`C_ChatInfo.SendAddonMessage`) are restricted during instance encounters. SoThirsty only sends when out of combat. Still queue sends, and drop them if combat starts.
-  - No realms. Key players by **GUID**, not by name.
-- It is Lua 5.1. CI tests on both `lua5.1` and `luajit`.
+- **WoW: Forever, Interface `16001`.** Ship **both** `SoThirsty_Forever.toc` and `SoThirsty.toc` with the same contents.
+- **A modern Midnight-based client with restrictions:**
+  - **Secret values.** Mana, health and range are **always secret**, in and out of combat, even for the player (Q17). Check with `issecretvalue` through `ns.IsSecret`. Never compare, test or do math on a secret.
+  - **Curves are the sanctioned path.** Build a curve with `C_CurveUtil`, pass it to `UnitPowerPercent(unit, Enum.PowerType.Mana, false, curve)`, and give the secret result to `SetAlpha` / `SetVertexColor` / `StatusBar:SetValue` on our own art. The curve input is **0–1**. `curve:Evaluate(secret)` is blocked for addon code (Q18, Q19).
+  - **No Alpha or Scale `AnimationGroup` over mana-driven textures.** An Alpha animation on a parent overrides its children's alpha instead of multiplying (Q22). A frame's own `SetAlpha` multiplies correctly: that's how known states are applied.
+  - `COMBAT_LOG_EVENT_UNFILTERED` is forbidden. No realms: key players by **GUID**.
+- Lua 5.1. CI tests on `lua5.1` and `luajit`.
 
 ---
 
-## 3. Repo layout (mirror bounty-line, addon-only)
-
-Create a new repo at `C:\Users\goret\Desktop\DEV\so-thirsty`:
+## 3. Repo layout
 
 ```
 so-thirsty/
-├── CLAUDE.md                     # project rules (Section 14)
-├── README.md                     # player-facing: install, what it does, commands, settings
-├── CHANGELOG.md                  # one entry per phase
-├── CONTRIBUTING.md               # adapted from bounty-line (drop worker/codec lines)
-├── PRIVACY.md                    # "SoThirsty sends nothing anywhere except your own group chat if enabled"
-├── SECURITY.md
-├── LICENSE                       # same license as bounty-line
-├── .gitignore                    # copy from bounty-line, trim worker/node bits
-├── .luacheckrc                   # same shape as bounty-line (Section 13)
-├── .pkgmeta                      # package-as SoThirsty, move addon/SoThirsty, ignore docs/tests/*.md
-├── .github/
-│   ├── ISSUE_TEMPLATE/ (bug_report.md, feature_request.md)
-│   └── workflows/
-│       ├── ci.yml                # addon job ONLY: luacheck + lua5.1 + luajit tests
-│       └── addon-release.yml     # BigWigsMods/packager@v2 on v* tags (copy as-is)
-├── docs/
-│   ├── SoThirsty-Design-Spec.md  # THIS FILE (move it here in Phase 1)
-│   └── curseforge-description.md
+├── CLAUDE.md, README.md, CHANGELOG.md, CONTRIBUTING.md, PRIVACY.md, SECURITY.md, LICENSE
+├── .gitignore, .luacheckrc, .pkgmeta, .github/ (issue templates, ci.yml, addon-release.yml)
+├── art/                          # icon sources, fallback backgrounds (not packaged)
+├── docs/SoThirsty-Design-Spec.md # THIS FILE
 └── addon/
     ├── SoThirsty/
-    │   ├── SoThirsty_Forever.toc
-    │   ├── SoThirsty.toc
+    │   ├── SoThirsty_Forever.toc, SoThirsty.toc, Bindings.xml
     │   ├── Locales/enUS.lua      # ALL player-facing text, plus drink aura names
     │   ├── Core.lua              # SavedVariables, defaults, slash commands, startup
-    │   ├── Levels.lua            # PURE logic: threshold state machine + drink decision (no WoW API calls)
-    │   ├── Roster.lua            # who's in the group, who's a healer, mana reads
-    │   ├── Drink.lua             # drink aura scan + mana-rise sampling
-    │   ├── Combat.lua            # group combat state, alert window timer, wipe detection
-    │   ├── Announce.lua          # chat line + on-screen + sound, merge, caps, snooze
-    │   ├── Comms.lua             # HELLO, poster election, MANA reports, chat-listen dedupe
-    │   ├── Theme.lua             # color presets, texture/style tables, sound list (data only)
-    │   ├── Frames.lua            # party/raid frame highlights in the chosen style
+    │   ├── Theme.lua             # palettes, icons, sizes (data only)
+    │   ├── Levels.lua            # PURE logic: curve points, visibility, button caps
+    │   ├── Roster.lua            # who's a healer, what the addon may know about them
+    │   ├── Drink.lua             # drink buff check
+    │   ├── Combat.lua            # group combat state, the after-fight timer, wipe check
+    │   ├── Curves.lua            # builds C_CurveUtil curves; asks the game to apply them
+    │   ├── Frames.lua            # on-frame indicators: mana bar color, pips
+    │   ├── Button.lua            # the drink button, its chat line, macros
     │   ├── Debug.lua             # /sot debug ...
-    │   ├── UI/Window.lua         # copy bounty-line's window helper (ns.CreateWindow, ns.Text)
-    │   ├── UI/Banner.lua         # optional movable on-screen banner (Section 9.3)
-    │   ├── UI/Options.lua        # settings window + Esc > Options > AddOns entry
-    │   └── Media/                # only what the game doesn't have (Section 9.7)
-    │       ├── logo.tga          # the SoThirsty icon (art/SoThirstyIcon2.png), 64 px (TOC + compartment)
-    │       ├── logo-128.tga      # the same, 128 px (window title, banner)
-    │       ├── ghost.tga         # greyscale, faded icon behind window content (Section 9.7)
-    │       ├── glow-*.tga        # soft glow pieces (reused from bounty-line)
-    │       └── Custom/README.txt # "drop custom1.ogg..custom3.ogg here" (Section 9.4)
-    └── tests/
-        └── logic.lua             # stubbed-API tests for Levels, Announce (merge/caps), Comms (election)
+    │   ├── UI/Window.lua         # window helper (ns.CreateWindow, ns.Text)
+    │   ├── UI/Flask.lua          # the draining flask
+    │   ├── UI/Banner.lua         # the after-fight banner
+    │   ├── UI/Vignette.lua       # the screen-edge glow
+    │   ├── UI/Minimap.lua        # minimap button + right-click command menu
+    │   ├── UI/Options.lua        # the options window
+    │   └── Media/                # logo.tga, logo-128.tga, minimap.tga, ghost.tga, glow-*.tga
+    └── tests/logic.lua           # stubbed-API tests: Levels, Roster, Combat, Button, commands
 ```
 
-**Copy from bounty-line:** the `local addonName, ns = ...` namespace pattern, `ns.L` locales, `ns.Print`, `applyDefaults`, the slash command table (`COMMANDS`), the `ADDON_LOADED` startup, the `pcall(ns.RegisterOptions)` Settings entry, the options window's `{ "check" / "cycle" / "head" }` row tables, the debug `line()`/`show()` helpers, the luacheck and CI setup, the packager workflow, and the addon compartment functions.
-
-**Leave out:** worker/, relay/, shared/, the codec, LibDeflate, qrencode, QR codes, packs, the Discord, the minimap button (the addon compartment entry is enough for a lightweight addon), and any network behavior.
-
-**Libraries:** none. No LibStub, Ace or LibSharedMedia. Plain Blizzard API only.
+No libraries. Plain Blizzard API only. The TOC lists the Lua files in the order above (`UI\Window.lua` before the other UI files, `UI\Options.lua` last).
 
 ---
 
 ## 4. TOC
 
-```
-## Interface: 16001
-## Title: So Thirsty
-## Notes: Tells your group when the healer is low on mana, out of combat, so the tank waits before pulling.
-## Author: Slac Jaw from RP-PVP
-## Version: @project-version@
-## X-Curse-Project-ID: TODO   (Rich creates the CurseForge project, then fills this in)
-## SavedVariables: SoThirstyDB
-## IconTexture: Interface\AddOns\SoThirsty\Media\logo
-## AddonCompartmentFunc: SoThirsty_OnAddonCompartmentClick
-## AddonCompartmentFuncOnEnter: SoThirsty_OnAddonCompartmentEnter
-## AddonCompartmentFuncOnLeave: SoThirsty_OnAddonCompartmentLeave
-
-Locales\enUS.lua
-Core.lua
-Theme.lua
-Levels.lua
-Roster.lua
-Drink.lua
-Combat.lua
-Announce.lua
-Comms.lua
-Frames.lua
-Debug.lua
-UI\Window.lua
-UI\Banner.lua
-UI\Options.lua
-```
-
-Settings are account-wide (`SoThirstyDB`). There's no per-character DB in v1.
+Interface 16001; Title "So Thirsty"; SavedVariables `SoThirstyDB` (account-wide); IconTexture `Media\logo`; the three AddonCompartment functions. `X-Curse-Project-ID` is added at release.
 
 ---
 
-## 5. Healer detection: tie into "Set Role"
+## 5. Healer detection
 
-- A unit is tracked only when **`UnitGroupRolesAssigned(unit) == "HEALER"`**. This is the role set through the role check, the LFG tool, or right-click portrait > **Set Role**.
-- The **local player doesn't have to be the healer.** Every addon user tracks every healer in the group. This is what lets one addon user cover a group of players who don't have it.
-- Re-scan on `GROUP_ROSTER_UPDATE`, `PLAYER_ROLES_ASSIGNED`, `ROLE_CHANGED_INFORM`, `PLAYER_ENTERING_WORLD`, and on `ADDON_LOADED` if already grouped.
-- Units to scan:
-  - In a raid (`IsInRaid()`): `raid1`–`raid40`.
-  - In a party: `player` plus `party1`–`party4`.
-  - Solo: do nothing. Unregister the power events to stay lightweight.
-- Store tracked healers by GUID: `{ unit, guid, name, class }`. Units can shift when the roster changes, so always map GUID → current unit on each rescan.
-- Skip a healer who is **dead or a ghost** (`UnitIsDeadOrGhost`), **offline** (`not UnitIsConnected`), or whose role read is secret.
-- **No role assigned anywhere in the group:** do nothing by default. Print a single, once-per-group hint ("No healer role set — right-click the healer's portrait > Set Role") **only to the group leader**, and only if `settings.roleHint` is true (default true).
-- Use the healer's **mana**, not their primary power: `UnitPower(unit, Enum.PowerType.Mana)` and `UnitPowerMax(unit, Enum.PowerType.Mana)`. This keeps working for druids in shapeshift forms. If max is 0, secret, or nil, skip the unit.
-- If a healer has the addon, their own client's `MANA` report (Section 11.3) is preferred over a remote read. A player's own mana and auras are never secret to themselves.
+- A unit is tracked only when **`UnitGroupRolesAssigned(unit) == "HEALER"`** (works for a right-click Set Role in a normal party, Q1).
+- Every addon user tracks every healer in the group; the local player doesn't have to be the healer.
+- Re-scan on `GROUP_ROSTER_UPDATE`, `PLAYER_ROLES_ASSIGNED`, `ROLE_CHANGED_INFORM`, `PLAYER_ENTERING_WORLD`, `ZONE_CHANGED_NEW_AREA`.
+- Units: `raid1`–`raid40`, or `player` + `party1`–`party4`. Solo does nothing and unregisters its unit events.
+- Healers are stored by GUID: `{ guid, unit, name, class, drinking }`.
+- **What the addon may know** (`Roster.Known`): enabled, zone allowed, group in combat, dead, offline, drinking. Never mana.
+- **No role set anywhere:** one once-per-group hint, only to the leader, only inside an instance (`roleHint`).
 
 ---
 
-## 6. The three warning levels
+## 6. Levels
 
-### 6.1 Defaults (customizable)
+### 6.1 Defaults
 
-| Level | Default | Color (Classic preset) | Frame | On-screen | Party chat | Raid chat | Instance chat | Sound | Default chat line |
-|---|---|---|---|---|---|---|---|---|---|
-| 1 | **50%** | Yellow `#FFD100` | ✔ | ✔ small | ✘ | ✘ | ✘ | ✘ | `{name} is getting thirsty ({pct}% mana)` |
-| 2 | **30%** | Orange `#FF8000` | ✔ | ✔ medium | ✔ | ✘ | ✔ | ✘ | `{name} is thirsty ({pct}% mana) - let them drink` |
-| 3 | **10%** | Red `#FF2020` | ✔ | ✔ large | ✔ | ✔ | ✔ | ✔ | `{name} is SO thirsty ({pct}% mana) - DON'T PULL` |
-| Ready | **90%** | Green `#40FF40` (clears highlight) | ✔ | ✔ small | ✘ | ✘ | ✘ | ✘ | `{name} is refreshed ({pct}% mana) - good to go` |
+| Level | Default | Color (Classic preset) |
+|---|---|---|
+| 1 "getting thirsty" | **50%** | Yellow `#FFD100` |
+| 2 "thirsty" | **30%** | Orange `#FF8000` |
+| 3 "so thirsty" | **10%** | Red `#FF2020` |
 
-- The Frame / On-screen / Party / Raid / Instance / Sound columns are the **output matrix**. Each cell is a setting (Section 9.1). The defaults keep chat quiet: 50% is a local heads-up only, chat starts at 30% in parties, and raids (where 20+ people read the chat) only hear about 10%.
-- **Chat channel per level:** each level has three separate checks: **Party**, **Raid** and **Instance**. The channel used is still decided by the group type (8.3); the check says whether that level may post in that kind of group. Example: L2 with Party ✔ and Raid ✘ posts in a 5-man but stays local in a raid.
-- **Color per level:** every level color (and Ready) has its own swatch that opens the color picker (9.2).
-- Each level has an **enable toggle** and a **threshold from 5 to 95**, in steps of 5. The UI also accepts typed values from 1 to 99.
-- Validation: the enabled thresholds must be **strictly descending** (L1 > L2 > L3). If an edit breaks the order, reject it and show a message. Don't silently reorder.
-- **Ready** (default **on**, chat **off**): when a healer who triggered any level recovers to `readyAt` (default 90%), clear their highlight and show one local "good to go". Players who want the tank's green light in chat can tick its Party / Raid / Instance cells.
-- Message templates are editable. Tokens are `{name}`, `{pct}`, `{level}`, `{threshold}` and `{class}`. "Reset messages" restores the defaults.
-- `pct` = `floor(mana / max * 100)`. A level is "current" when **pct < threshold** (strictly less than, so "less than 30%" means 29 and below).
+- Thresholds move in **steps of 10** in Options (10–90); `/sot levels` accepts 1–99.
+- They must be **strictly descending**. A bad edit is rejected with a message, never silently reordered.
+- **Above level 1 nothing shows.** Below it, color blends smoothly from level 1's color to level 3's. Above level 1 the color is water blue `#4FC3F7` (seen only where an indicator is still visible, like the drink button's border).
+- The addon can't "announce" a level: it never knows which one a healer is in. Only the screen shows it.
 
-### 6.2 State machine (`Levels.lua`, pure, fully unit-tested)
+### 6.2 Pure logic (`Levels.lua`, fully unit-tested)
 
-Keep this file free of WoW API calls. It takes numbers and booleans and returns decisions, so `tests/logic.lua` can cover it completely.
+No WoW API. `Curves.lua` turns the point lists into real curves. Points are on the 0–1 scale.
 
-Per-healer state (keyed by GUID):
+- `Validate(levels)` → `true`, or `false` plus `"RANGE"` / `"ORDER"`.
+- `ColorPoints(cfg, fine)` → linear color curve: level 3's color at 0 and at level 3, level 2's, level 1's, then `fine` just above level 1 (water blue unless a class color is passed).
+- `AlphaPoints(cfg)` → the fade for the flask and screen glow: 1 at level 3 and below, down to `FAINT` (0.35) just under level 1, then 0 at level 1 and above.
+- `LowPoints(cfg)` → step: 1 below level 1, 0 at and above (the bar color and banner text: solid on or off).
+- `PipPoints(cfg, i)` → step: 1 below level `i`, 0 at and above.
+- `ColorAt`, `AlphaAt`, `PipsLit`, and `Plain(pct, cfg)` → the same answers for a plain percent, for the previews. `Plain` returns `fraction, r, g, b, alpha, low, pip1, pip2, pip3`, the same order `Curves.All(unit)` returns the secret versions in.
+- `Holder(known)` → known-state visibility: **0** when off, wrong zone, in combat, dead or offline; **0.35** and `drinking` when drinking; otherwise **1**.
+- `CanNudge(known, wiped)` → may this healer be on the banner: not wiped, not drinking, not dead/offline, not in combat.
+- `Wiped(dead, total)` → at least half the group and at least two players dead.
+- `ButtonAllowed(now, log)` → `true`, or `false` plus `"COOLDOWN"` (15 s) / `"CAP"` (3 per 300 s).
+- `Message(template, name, class)`; `Migrate(old)` (Section 12.1).
 
-```lua
-state = {
-  announced = 0,     -- deepest level announced this drain cycle (0 = none)
-  cycle     = false, -- any level announced since last "ready"
-  lastPct   = nil,
-}
-```
+The final picture is always **known alpha (set by us on a frame) × secret alpha (set by the game on a texture)**. The two are never multiplied in Lua.
 
-**`ns.Levels.Current(pct, cfg)`** returns the deepest enabled level whose threshold is greater than `pct`, or 0.
+### 6.3 Required tests (`addon/tests/logic.lua`)
 
-**`ns.Levels.Update(state, pct, inCombat, cfg)`** runs on every (coalesced) mana update. It never announces a level. It returns `nil`, `{ kind="arm" }` or `{ kind="ready" }`.
-
-1. If `pct` is secret, return nil and leave the state untouched.
-2. Set `lastPct = pct`.
-3. **Re-arm:** while `announced > 0` and `pct >= threshold[announced] + cfg.rearmMargin` (default **5**), step `announced` down to the next shallower enabled level (or 0). This prevents flapping at the boundary.
-4. **Ready:** if `cycle` is true, `pct >= cfg.readyAt`, Ready is enabled, and not `inCombat`: set `cycle = false`, `announced = 0`, return `{ kind="ready" }`.
-5. **Arm:** if not `inCombat` and `Current(pct) > announced`, return `{ kind="arm" }`. This tells `Combat.lua` to open an alert window if one isn't open already (for mana spent between pulls, like buffing or topping people off).
-
-**`ns.Levels.Settle(state, pct, drinking, cfg)`** runs once per healer when an alert window closes (Section 7). It returns `nil` or `{ kind="level", level=n, pct=pct }`.
-
-1. If `pct` is secret or nil, return nil.
-2. `current = Current(pct)`. If `current <= announced`, return nil (escalation only). A drop from 60 to 8 announces **only level 3**, never 50, then 30, then 10.
-3. If `drinking` is true, return nil and **don't** change `announced`. If they stop early and the next pull drains them further, the next window can still warn.
-4. Otherwise set `announced = current`, `cycle = true`, and return the level decision.
-
-**`ns.Levels.IsDrinking(auraMatch, startPct, endPct, cfg)`** is the pure half of drink detection (Section 6.4):
-
-- `auraMatch == true` → true.
-- Otherwise, if both pcts are real numbers and `endPct - startPct >= cfg.drinkRise` → true.
-- Otherwise false. (A secret or unknown aura read is `nil`, not `false`; it falls through to the mana-rise check.)
-
-### 6.3 Required tests (in `addon/tests/logic.lua`)
-
-Levels:
-
-- 100 → 49, settle: L1 once. 48, 47, settle again: nothing.
-- 100 → 29, settle: only L2.
-- 60 → 8 in combat, settle at 8: L3 once.
-- 60 → 25 in combat, drinks to 40 by settle: L1 at most (not L2).
-- 29 → 31 → 29 (inside the re-arm margin), settles each time: no second L2.
-- 29 → 36 → 29 (past the margin), settle: L2 again.
-- Settle while drinking: nil, `announced` unchanged. Next settle, not drinking, still at 25: L2 fires.
-- Two settles in a row with no mana change: the second returns nil.
-- 9 → 92 out of combat: Ready once, then nothing.
-- Ready disabled: never fires.
-- A disabled level is skipped (L1 off and a drop to 45 does nothing).
-- Custom thresholds 60/40/20 behave the same way.
-- Invalid order (30/50/10) is rejected by `ns.Levels.Validate`.
-- Secret pct: `Update` and `Settle` return nil and the state is unchanged.
-- `Update` out of combat returns `arm` once a new level is crossed, and never returns `arm` in combat.
-- `IsDrinking`: aura true → true; aura nil + rise 12 → true; aura nil + rise 3 → false; aura false + secret pcts → false.
-
-Announce and Comms:
-
-- Two healers settle in the same window → **one** merged line: `Healers thirsty: Sherl 28%, Brann 9%`.
-- A fourth chat line inside 5 minutes is refused (cap) and routed local.
-- Snooze on: chat refused, on-screen and frames still work.
-- Wipe flag on: the window produces nothing.
-- Election (pure `ns.Comms.Elect(hellos, roster)`): the leader with the addon wins; no leader → tank with the addon → lowest GUID. Every client computes the same winner from the same input.
-- Healer opted out (`announceMe = false`): never in a chat line, still on frames.
+Every function above: validation cases; the color, fade, low and pip points at default and custom levels; `PipsLit` at the boundaries (at a level = not yet lit); `Plain` at 25% and 90%; each `Holder` rule and its priority; `CanNudge`; `Wiped`; the button cooldown and cap; `Migrate` (keeps and drops); the v4 defaults. Plus Roster (scan, roles, secret role, known states, coalescing, drink buff, solo, PvP zone, raid), Combat (timer delay, chain pull, drinking, wipe, dead, banner off, group scope), the drink button's hard rules, and every slash command.
 
 ### 6.4 Drink detection (`Drink.lua`)
 
-"Already drinking" is checked at the **end** of the alert window, per healer. A healer is drinking if **either** signal says so:
-
-1. **Drink aura.** Scan the healer's helpful auras (`C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")`, or `AuraUtil.ForEachAura`). Match the aura name against `L.DRINK_AURAS` (enUS: `Drink`, `Food & Drink`, `Refreshment`), plus an optional spell ID set in `Theme.lua` for known drinks. If any field we need is secret, the result is `nil` (unknown), not `false`.
-2. **Mana rising.** `Drink.lua` samples the healer's pct when the window opens and again when it closes. If it rose by at least `settings.drinkRise` (default **10** percentage points across the 10 s window), treat them as drinking. This works even when auras are secret, as long as mana isn't. Tune the default with `/sot debug drink` (Section 16, Q11–Q12).
-
-Extras:
-
-- The healer's own client (if they have the addon) sends its own drinking flag in its `MANA` report. It's never secret to them, so it wins over a remote read.
-- Frames can show a small **drinking** indicator on the healer's frame (`frames.showDrinking`, default on), so the tank can see "they're on it" without anyone typing.
-- If a healer stops drinking early, we **don't** nag. The next alert window re-checks.
+- **Drinking** = a helpful aura matching `L.DRINK_AURAS` by name (`Drink`, `Food & Drink`, `Refreshment`) or a spell ID in `Drink.SPELL_IDS` (1135 so far). Readable out of combat for the player and party members (Q11).
+- Unreadable aura data = unknown = treated as not drinking.
+- Checked on `UNIT_AURA` for tracked healers, out of combat only, coalesced to once per healer per 0.5 s.
 
 ---
 
-## 7. Combat gate and the alert window (`Combat.lua`)
+## 7. Combat and the after-fight moment (`Combat.lua`)
 
-The goal: **warnings never fire while anyone is fighting**, and they fire **once**, after things have calmed down.
-
-- **The group is "in combat"** if the player is (`InCombatLockdown()` / `UnitAffectingCombat("player")`) **or any group member is** (`UnitAffectingCombat(unit)`).
-- Setting `combatScope`: `"group"` (default) or `"me"`.
-- If a member's combat flag reads as secret, **treat them as in combat**. That's the safe choice.
-- **Events:** `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`, and `UNIT_FLAGS` for group units. If `UNIT_FLAGS` proves unreliable on Forever (see Section 16), fall back to a **0.5 s `C_Timer` ticker that runs only while the player is out of combat and some member was last seen in combat**. Never run an always-on OnUpdate.
-
-**The alert window:**
-
-- **Opens** when the group leaves combat, or when `Levels.Update` returns `arm` out of combat and no window is open.
-- On open: record each healer's pct (the drink-rise baseline) and start a `C_Timer.NewTimer(settings.settleSeconds)` (default **10 s**, choices 5 / 8 / 10 / 15 / 20).
-- **Cancelled** if combat restarts before it closes. Nothing is said, and the next combat end opens a fresh window. Chain pulls stay silent.
-- **Closes** after the timer: for each tracked healer, read fresh pct, decide drinking (6.4), call `Levels.Settle`, collect the decisions, and hand the list to `Announce.lua` **once**.
-- Only one window is open at a time. A second `arm` while a window is open does nothing.
-
-**Wipe detection:** if, when combat ends, at least half the group (minimum 2) is dead or a ghost, set a `wiped` flag. The window still updates state silently but produces no output. The flag clears at the next combat start. (`settings.quietAfterWipe`, default on.)
-
-**When combat starts:**
-
-- Cancel the open window, drop queued chat and comms sends.
-- Frame highlights follow `settings.highlightInCombat`:
-  - `"hide"` (default): stale data is worse than none, and mana may be secret in combat.
-  - `"freeze"`: keep the last out-of-combat state.
+- **In combat** = the player is, or (`combatScope = "group"`, the default) any group member is. A secret read counts as in combat.
+- Events: `PLAYER_REGEN_DISABLED` / `ENABLED`, and `UNIT_FLAGS` for group units (coalesced to 0.5 s). While the player is out of combat but someone else is still fighting, re-check every second. No always-on OnUpdate.
+- **Combat starts:** cancel any pending banner; everything hides.
+- **Combat ends:** indicators come back at once. Start `C_Timer.NewTimer(banner.delay)` if the banner is on.
+- **The timer fires:** `Combat.Nudge` collects every healer passing `Levels.CanNudge` and hands the list to `Banner.Show`. A healer above level 1 is invisible on the banner (the game hides them), so the addon doesn't need to know who is low.
+- **Wipe:** if at least half the group (minimum 2) is dead when combat ends, no banner this time.
 
 ---
 
-## 8. Warning outputs (`Announce.lua`)
+## 8. The indicators
 
-`Announce.lua` receives one list of decisions per alert window and routes each decision through the output matrix (9.1). Frames, on-screen and sound are **local** to each addon user. Chat is **shared** and goes through every rule in 1.1.
+Each has `enabled` and lives in its own settings group. All follow `Levels.Holder` for known states.
 
-### 8.1 Frame highlight (`Frames.lua`): always local, no spam risk
+### 8.1 Mana bar color (`Frames.lua`, `settings.bar`, on by default)
 
-- Show a highlight in the level's color on the healer's unit frame, in the chosen style (9.2). Optionally show a **badge** (`frames.badge`, default on). The badge helps color-blind players.
-- **Blizzard frames to support (v1):**
-  - Compact party frames (`CompactPartyFrame` members)
-  - Compact raid frames (`CompactRaidFrameContainer` children)
-  - The classic party frames (`PartyFrame.MemberFrame1..4` or the Forever equivalent; confirm in `/sot debug frames`)
-- **Finding frames:** walk the known containers and match `frame.unit` / `frame.displayedUnit` against the healer's unit with `UnitIsUnit`. Re-map on roster updates, and with `hooksecurefunc` on the compact-frame setup function only if the plain re-scan isn't enough. Never replace Blizzard functions.
-- **Taint safety:**
-  - Our overlay is a plain, non-secure `Frame` that we create and `SetAllPoints()` on the target frame.
-  - Create and anchor it **only out of combat**.
-  - In combat, only `Show`/`Hide` our own frame. Never touch the Blizzard frame's own properties.
-  - Pulse uses an `AnimationGroup` on our own overlay (not OnUpdate).
-- The highlight is **continuous**: it always shows the current level while out of combat and clears at or above the L1 threshold. It isn't a one-shot, and it doesn't wait for the alert window. It's silent, so it can't be annoying.
-- **Fallback:** if no frame is found for a healer (custom frames, hidden frames), show nothing on frames. Chat and on-screen warnings still work. `/sot debug frames` reports which frames were found.
-- **Third-party frames** (ElvUI, Cell, Grid2): out of scope for v1. Add them to the README "Planned" list.
+- Our own `StatusBar` (0–1) sits exactly over the healer's own power bar on their unit frame. Fill = `Curves.Fraction`, color = the color curve, fill alpha = `low`. So above level 1 it's invisible and the real bar shows; below, the bar reads yellow, orange, then red.
+- The power bar is found by reading `target.powerBar` / `PowerBar` / `manabar` / `ManaBar` (Q25). Read-only: nothing is set on it. If none is showing, a 6 px strip along the frame's bottom is used.
+- Option: opacity (40–100%).
 
-### 8.2 On-screen warning: local, every player with the addon
+### 8.2 Pips (`Frames.lua`, `settings.pips`, on by default)
 
-- **No raid warnings.** SoThirsty never uses `RaidWarningFrame` / `RaidNotice_AddMessage`, and never posts to the `RAID_WARNING` channel. The on-screen warning is always SoThirsty's own movable banner (9.3), in the level's color.
-- `settings.onScreen`:
-  - `"all"` (default): show it on every addon user's screen.
-  - `"tank"`: show it only if *my* role is TANK (`UnitGroupRolesAssigned("player")`).
-  - `"off"`.
-- The healer's own screen: `settings.onScreenSelf` (default **off**). The healer already knows they're dry.
-- A merged window with several healers shows **one** on-screen message, colored by the deepest level in it.
+- Three small squares in a corner of the healer's frame, each on a dark backing. Pip `i` has level `i`'s color and alpha from `pip<i>`: one lit below level 1, two below level 2, three below level 3. Countable, so it doesn't depend on judging a color.
+- Options: size (small / medium / large), corner.
 
-### 8.3 Group chat line: visible to players without the addon
+**Both on-frame indicators:**
+- One **holder** per healer: our own plain frame, parented to `UIParent`, `SetAllPoints` on the unit frame, **created and anchored out of combat only**. In combat only alpha changes on our own frames.
+- Frames supported: compact party (`CompactPartyFrameMember1..5`, confirmed Q8), compact raid, classic party, and the player frame as a last resort. Found by matching `frame.displayedUnit` / `frame.unit`.
+- Post-hooks (`HookScript` OnShow/OnHide) on the unit frame keep the holder in step. Never replace or set anything on a Blizzard frame.
+- No frame found → these two indicators don't show for that healer. The other three still do.
+- A drinking healer also gets a small drink mark on the frame.
 
-- **Channel:**
-  - `INSTANCE_CHAT` if `IsInGroup(LE_PARTY_CATEGORY_INSTANCE)`
-  - else `RAID` if `IsInRaid()`
-  - else `PARTY`
-  - Never `SAY`, `YELL` or `RAID_WARNING`.
-  - Then the level's per-channel check (6.1) must allow that channel (`out.party`, `out.raid`, `out.instance`). If it doesn't, the line stays local. A merged line posts if **any** level in it allows the channel.
-- **Who sends** (`settings.announceMode`):
-  - `"group"` (**default**): the one **elected** addon user posts for **every** healer, with or without the addon (Section 11). This is what makes "only one person needs it" work.
-  - `"self"`: only post about my own mana, when I'm the healer. Ignores election.
-  - `"local"`: never post to chat. Frames, on-screen and sound only.
-- **Rate limits** (hard, not configurable):
-  - At most **one chat line per alert window**. Several healers are merged into one line (`Healers thirsty: Sherl 28%, Brann 9%`). With a single healer, use that level's template.
-  - At most **3 chat lines per 5 minutes** per client. Past that, route to local and print one local notice ("SoThirsty is staying quiet for a few minutes").
-  - **Never** send while in combat, and never send in battlegrounds or arenas.
-  - Snooze (`/sot snooze [minutes]`, default 30, or `instance`) blocks chat only.
-- Prefix every chat line with `[SoThirsty]` so people know it's an addon message (`settings.chatPrefix`, default on). The prefix is also how other addon users spot the line for the chat-listen safety net (11.4). If a player turns it off, the Options window notes that the safety net is weaker.
-- Optional raid marker in the line (`chat.marker`, default none; choices `{rt1}`–`{rt8}`). Group chat strips color codes, so **colors are local only**.
-- There's no global channel override. Channel choice lives per level (6.1).
+### 8.3 Draining flask (`UI/Flask.lua`, `settings.flask`, on by default)
+
+- One flask per healer in a row, anywhere on screen. Works with party frames hidden. It is a stand-in for a mana bar: by default it **always shows** (out of combat), full or not.
+- Built from a game potion icon: a dark, colorless copy behind (the empty flask); the same icon in color as a **vertical `StatusBar`** filled by `Curves.Fraction`, so the liquid drains (Q26); a 2 px edge that is the healer's **class color** while they are fine and the level colors below level 1 (`Curves.ClassColor`: the color curve with the class color as its "fine" end, one cached per class).
+- The healer's name underneath, class-colored.
+- With `flask.whenLow` on, it goes back to hiding while mana is fine: every texture's alpha comes from the fade curve and the name's from `low` (Q27; the name is dropped if the client refuses).
+- **Several healers:** `flask.layout` lines them up in a **row** (default) or a **column**. `flask.together` (default on) places them as one stack; off, each flask is dragged to its own spot, saved per slot (first healer, second healer...) in `flask.points`. While placing, three stand-ins show so the layout can be seen.
+- **Simple view** (`flask.simple`, off by default): each flask becomes a plain bar (14 × 48), side by side with their bottoms level, filled by the same fraction and colored like the edge (class color while fine, level colors when low). No icon and no name. In a raid the row of bars reads as the healers' mana at a glance; there is no combined number (mana is secret and can't be added up).
+- Options: only when low, opacity (20–100%), size, show names, simple view, row or column, stack or one by one. Placed in the on-screen preview (Section 9.2) or with `/sot move`.
+
+### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
+
+- Once per fight (Section 7), near the top of the screen: one line per healer with the drink icon, their name and a colored underline. Color from the color curve; visibility from `low`. Hides after `banner.hold` seconds or when combat starts.
+- **Wording:** `<First Surname>'s mana is at x%` (Q29). `banner.surname` (default on) picks first name and surname, or first name only. The number is never known to the addon: `Curves.Percent` gets the secret 0–100 value and hands it straight to `SetFormattedText`, so the game prints it (Q28). It is the number as of the moment the banner appears; it doesn't tick. If the client refuses, the line is just the name.
+- If the client won't color or fade text from hidden values (Q27), the name is dropped and the icon and underline still show.
+- Our own frame. Up to 8 lines.
+- Options: delay (3 / 5 / 8 / 10 s), hold (3–8 s), size, name shown. Placed like the flask.
+- **Placing** (`/sot move`, or the on-screen preview, Section 9.2) shows a sample with a purple plate to drag. It ends with `/sot lock`, or when the on-screen preview or the Options window closes. An indicator that is switched off shows nothing, placing or not.
+
+### 8.5 Screen-edge glow (`UI/Vignette.lua`, `settings.vignette`, **off** by default)
+
+- Four soft strips along the screen edges (the `glow-edge-*.tga` art, stretched), strata BACKGROUND. One layer per healer, up to 4; each colored by the color curve and faded by the fade curve, so the thirstiest shows through without any comparison.
+- Layer alpha = known alpha × `vignette.strength`.
+- `vignette.custom` swaps the level colors for one color of the player's own (`vignette.color`, from the color picker); the fade still comes from mana.
+- Options: strength (10–100%), width (thin / medium / wide), use my own color + the color.
+
+### 8.6 The drink button (`Button.lua`, `settings.button`)
+
+The only thing that ever posts to chat, and only on a click.
+
+- A small button with the drink icon; drag it whenever it shows. Shown **only** when my role is Healer and I'm grouped (`show = "healer"`, or `"never"`): never solo, never for another role, not even while placing or previewing. An old `"always"` counts as `"healer"`. Its border takes my own mana color.
+- **Left-click:** `{name} needs a drink - hold the pull`. **Right-click:** `{name} is good to go`. Both editable; tokens `{name}`, `{class}`. `{name}` is "First Surname" or the first name only (`button.surname`, default on; Q29). Tag `[Thirsty]` (`button.prefix`).
+- **Channel** by group type: `INSTANCE_CHAT`, else `RAID`, else `PARTY`. Three checks (`party`, `raid`, `instance`) say where a click may post.
+- **Hard rules:** `Levels.ButtonAllowed`; never in combat; never in battlegrounds or arenas. A refused click prints why, locally.
+- **Keys:** `/sot macro` makes "SoT Drink" and "SoT Ready" macros (out of combat, if missing) and puts the first on the cursor. `Bindings.xml` adds both under Key Bindings > AddOns.
+
+### 8.7 What's gone
+
+v2's frame looks (tint, glow, border, corners, bar strip), the pulse, the nudge brighten, ready tick, range fade, grey edge, the thirst meter, the Ready level, color-band modes and feel presets. v1's automatic chat lines, sounds, banner-by-threshold, poster election and addon messages.
 
 ---
 
-## 9. Customization: colors, textures, sound and feel
+## 9. Look and assets
 
-Everything here is cosmetic or local. None of it can make chat louder than the quiet contract (1.1) allows. All lists of textures, colors and sounds live in `Theme.lua` as plain data tables, so adding a style is a one-line change.
+### 9.1 Colors
 
-### 9.1 Output matrix and presets
+- Every color is a swatch that opens the game's `ColorPickerFrame`, with a **Reset** button beside it: the three level colors and the screen glow's own color.
+- **Color presets** fill all three: Classic (yellow / orange / red), Water (light blue / blue / violet), Color-blind safe (yellow / orange / magenta). Picking a color by hand switches the preset to Custom.
 
-- A grid in Options: rows **L1 / L2 / L3 / Ready**, columns **Color / Frame / On-screen / Party / Raid / Instance / Sound**. Defaults are in the table in 6.1.
-- **Quick presets** set the output columns in one click (colors are left alone):
-  - **Quiet**: Party + Instance on L3 only, Raid never; sound on L3.
-  - **Normal** (default): Party + Instance on L2 and L3, Raid on L3; sound on L3.
-  - **Chatty**: Party, Raid and Instance on L1, L2, L3 and Ready; sound on L2 and L3.
-  - **Local only**: all chat checks off (same effect as `announceMode = "local"`).
-- Tank extra: `sound.tankAll` (default on). If my role is TANK, I hear a sound on every level I'd see on-screen. The tank is the one who has to stop.
+### 9.2 Preview
 
-### 9.2 Colors and frame look
+Previews happen on the real indicators, not on a stand-in inside the window. Samples use plain numbers and rest at 25% mana, so everything shows.
 
-**Color picker everywhere.** Every color in SoThirsty is a swatch that opens the game's color picker (`ColorPickerFrame`, with opacity, and Cancel restores the old color). That covers:
+- Opening the Flask, Banner or Screen glow tab shows that indicator's sample, so each can be tuned without a group.
+- **Play** (`/sot test`) goes on screen (below) and runs all five from 100% down to 0%, through a drink, and back to the resting sample. Nothing is posted.
+- **Preview on screen** (bottom right of the window, and "Preview and place on screen" on the Flask and Banner tabs) tucks the Options window away and shows every switched-on indicator where it really sits: three stand-in flasks, the banner, the screen glow, and the bar and pips on the real frames of the healers in the group, or on the player's own frame when there are none (`Frames.Demo`, plain numbers only). The flask and banner get their purple plates for dragging. A small draggable bar stays up with two buttons: **Play** and **Back to Options**. Unsaved changes ride along both ways. `/sot` also brings the window back. It won't start in combat, and a fight ends it like closing the window (nothing of ours shows in combat).
 
-- L1, L2, L3 and Ready colors (frame highlight, badge and banner text).
-- The badge text color (default: same as the level).
-- The drinking indicator color (default `#4FC3F7`).
-- The banner background and border tint.
-- The chat prefix color in your own chat frame (`|cff4fc3f7` by default; local only).
+### 9.3 Blizzard assets first
 
-Every swatch has a small **reset** arrow next to it that puts back its default.
+Build from the game's own assets wherever one exists; ship art only when the game has none.
 
-**Color presets** (`look.palette`) fill the four level colors in one click. Picking any color by hand switches the palette to **Custom**.
-
-| Preset | L1 | L2 | L3 | Ready |
-|---|---|---|---|---|
-| **Classic** (default) | `#FFD100` yellow | `#FF8000` orange | `#FF2020` red | `#40FF40` green |
-| **Water** (on-brand) | `#9BE7FF` light blue | `#4FC3F7` blue | `#7B4FF7` violet | `#FFFFFF` white |
-| **Color-blind safe** | `#F0E442` yellow | `#E69F00` orange | `#CC79A7` magenta | `#56B4E9` sky blue |
-| **Custom** | whatever you picked | | | |
-
-**Highlight style** (`look.style`):
-
-- `"glow"` (default): soft outer glow using the `glow-*.tga` textures.
-- `"border"`: solid border, thickness 1–4 px (`look.thickness`, default 2).
-- `"corners"`: four small corner brackets. The least intrusive option.
-- `"tint"`: a translucent fill over the whole frame.
-- `"bar"`: a colored strip over the frame's mana/power bar area only (still our own overlay, anchored to the frame).
-
-**Other look settings:**
-
-- Opacity 20–100% (`look.alpha`, default 80).
-- Pulse: `"off"` / `"L3"` (default) / `"all"`, speed slow / normal / fast. `AnimationGroup` only.
-- **Badge:** content `"pct"` (default, `30%`), `"icon"` (water drop), or `"both"`; position top-left / top-right (default) / bottom-left / bottom-right; size small / medium (default) / large.
-- **Drop icon choice** (`look.icon`): a built-in game drink icon (default `INV_Drink_07`; list in `Theme.lua`, verified with `/sot debug icons`) or the SoThirsty logo.
-- **Drinking indicator:** the badge swaps to a blue drop with a small "drinking" tint when 6.4 says they're drinking.
-
-### 9.3 On-screen look
-
-- The on-screen warning is always the **banner**. No raid-warning frame, ever.
-- **Banner** (`UI/Banner.lua`): our own frame with the SoThirsty icon, the healer's class-colored name, and the pct in the level color. Background and border tint come from the color picker (9.2).
-  - Movable: "Unlock banner" in Options or `/sot move` shows a drag handle; `/sot lock` hides it. Position saved in `onScreen.point`.
-  - Scale 50–200% (`onScreen.scale`), hold time 2–8 s (`onScreen.hold`, default 4), fade out with an `AnimationGroup`.
-  - Right-click the banner: snooze menu (30 min / rest of instance / cancel).
-- Size per level (small / medium / large) follows 6.1, and can be flattened to one size (`onScreen.sameSize`).
-
-### 9.4 Sound
-
-- **Per-level sound** (`sound.levels[1..3]`, `sound.ready`): pick from a list of game sounds (`SOUNDKIT` entries verified on Forever with `/sot debug sounds`), or **None**. Each picker has a ▶ **Preview** button. Defaults: L1 none, L2 none, L3 an alert sound, Ready none.
-- **Custom sounds, no library:** players can drop `custom1.ogg`, `custom2.ogg`, `custom3.ogg` into `Media\Custom\` and pick "Custom 1–3". Played with `PlaySoundFile`; a missing file fails silently. We ship no custom sounds.
-- **Channel** (`sound.channel`): Master (default) / SFX / Dialog / Ambience, so players who mute SFX still hear it, or vice versa.
-- Master toggle `sound.enabled`. A sound plays **at most once per alert window**, for the deepest level in it.
-
-### 9.5 Chat look
-
-- Editable templates per level and Ready, plus the **merged** template (`Healers thirsty: {list}`), with token help and Reset.
-- Prefix on/off (8.3) and an optional raid marker. Party / Raid / Instance are chosen per level in the output grid (9.1).
-- **Preview line** in Options shows exactly what would be sent, built from the current templates. Nothing is sent.
-
-### 9.6 Feel and quality of life
-
-- **Snooze:** `/sot snooze [30 | instance | off]`, compartment right-click menu, banner right-click. Chat only; frames stay.
-- **Healer opt-out** (`announceMe`, default on): a healer with the addon can say "don't announce me". This goes out in HELLO (Section 11), so the elected poster leaves them out of chat. Frames still show for everyone.
-- **`/sot test`** walks through L1 → L2 → L3 → drinking → Ready on **your own** frame, screen and sound only, 2 s apart, using the current look. Never posts to chat. An Options **Preview** button does the same for one level.
-- **Status tooltip:** hovering the compartment icon lists tracked healers, their pct, drinking state, who the elected poster is, and whether snooze is on.
-
-### 9.7 Blizzard assets first
-
-Build the interface from the game's own assets wherever one exists. Ship art only when the game has no equivalent. That keeps the download tiny, matches the game's look, and stays inside the add-on policy (the client's own files only, nothing extracted or redistributed).
-
-- **Templates:** `UIPanelButtonTemplate`, `UICheckButtonTemplate`, `UIPanelCloseButton`, the game's slider template (`MinimalSliderWithSteppersTemplate`, or `OptionsSliderTemplate` on older clients), `InputBoxTemplate`, `UIDropDownMenu` / `MenuUtil` for pickers, `BackdropTemplate`, `GameTooltip`.
-- **Color picker:** the game's `ColorPickerFrame`, never a homemade one.
-- **Borders and backgrounds:** the dialog border (`Interface\DialogFrame\UI-DialogBox-Border`), the tiling rock (`Interface\FrameGeneral\UI-Background-Rock`) and dark dialog background, tinted to the icon's palette with `SetVertexColor`.
-- **Icons:** game icons for the badge, drinking indicator and sound/preview buttons (for example `Interface\Icons\INV_Drink_07`, `INV_Drink_18`, `Spell_Holy_MagicalSentry`; the exact list lives in `Theme.lua`, verified with `/sot debug icons`).
-- **Highlights:** game atlases and textures where they fit (action-button glow, `UI-Frame-*` borders); our `glow-*.tga` only for the soft window/frame glow.
-- **Fonts:** the game's font objects (`GameFontNormal`, `GameFontHighlight`, `GameFontNormalHuge`, `NumberFontNormal`).
-- **Sounds:** `SOUNDKIT` entries only (plus the player's own optional custom files, 9.4).
-- **Window ghost:** `ghost.tga` is the icon, greyscaled, softened and faded to transparent well before its edges. It sits faintly in the middle of every SoThirsty window, over the inner panel and under all text and controls, tinted toward the violet. Strength is `look.ghost` (0–100 %, default **25**, 0 = off). It's a slider on the Look tab, and `/sot ghost <n>` until then.
-- **What we ship:** `logo.tga` / `logo-128.tga` (the SoThirsty icon), `ghost.tga` (the window ghost) and the three `glow-*.tga` pieces. Nothing else unless a game asset is missing on Forever (then the replacement goes in `Media/` and the reason goes in Section 16). Addon-made violet-stone backgrounds sit in `art/fallback/` for exactly that case.
-- **Palette** (from the icon, `art/SoThirstyIcon2.png`): violet haze `#4F2365` over plum-slate stone `#2F1E22` for backgrounds, violet glow `#9E4DFF`, candle gold `#FACC5C` for titles, brass `#BF8C33` for fine edges, leather `#A5603A` for section markers, fel green `#6BE04D` as a sparing accent (Ready / "good to go"), warm white `#F2EBE0` body text. Water blue `#4FC3F7` stays for the chat prefix and the drinking indicator, because it means water.
-- **Icon sizes:** `logo.tga` 64 px (TOC, compartment), `logo-128.tga` 128 px (window title, banner), `art/logo-256.png` for CurseForge. The source art is center-cropped to square.
+- **Templates:** `UIPanelButtonTemplate`, `UICheckButtonTemplate`, `UIPanelCloseButton`, `InputBoxTemplate`, `BackdropTemplate`, `CooldownFrameTemplate`, `MenuUtil`, `GameTooltip`. Steppers ([-] value [+]) instead of sliders, so no slider template is needed.
+- **Icons:** `INV_Drink_07` (drink button, drinking mark, banner), `INV_Potion_76` (flask). `Interface\TargetingFrame\UI-StatusBar` for bars.
+- **Windows:** dialog border, tiling rock background tinted violet, the game's fonts.
+- **What we ship:** `logo.tga` / `logo-128.tga`, `minimap.tga` (the first icon), `ghost.tga`, and the three `glow-*.tga` pieces.
+- **Window art:** `ghost.tga` is the public icon (`art/SoThirstyIconPublic.jpeg`) in plain black and white, 512 px. It fills the whole content panel of every SoThirsty window, cropped not squashed. Strength is `settings.ghost` (default **35%**, 0 = off).
+- **Palette** (from the icon): violet haze `#4F2365`, plum-slate stone `#2F1E22`, violet glow `#9E4DFF`, candle gold `#FACC5C` (titles), brass `#BF8C33` (edges), leather `#A5603A` (markers), warm white `#F2EBE0` (text), water blue `#4FC3F7` (chat prefix, "fine" mana).
 
 ---
 
 ## 10. Where it runs
 
-`settings.zones` (multi-toggle):
-
-| Zone | Default |
-|---|---|
-| Dungeons (`IsInInstance()` → `party`) | **on** |
-| Raids (`raid`) | **on** |
-| Open world / delves / scenarios | **off** (prevents spam in casual groups) |
-| Battlegrounds / arenas (`pvp` / `arena`) | **always off**, not a setting |
-
-Frame highlights follow the same zone rules.
+`settings.zones`: dungeons **on**, raids **on**, open world and everything else **on**. Battlegrounds and arenas are **always off** and not a setting. Every indicator and the drink button follow this.
 
 ---
 
-## 11. One addon user covers the group (`Comms.lua`)
+## 11. Who sees what
 
-This is a **core** feature, not optional. The default `announceMode = "group"` depends on it.
-
-### 11.1 HELLO
-
-- Addon prefix: `SoThirsty` (register with `C_ChatInfo.RegisterAddonMessagePrefix`).
-- Messages are tiny pipe-delimited strings, versioned: `1|HELLO|<version>|<isHealer>|<announceMe>|<mode>`.
-- Send on group join, roster change (debounced 2 s) and `/sot sync`, **out of combat only**. Queue anything that's blocked and flush it after combat.
-- Keep a `hellos[guid]` table. Drop entries for GUIDs that leave the group.
-
-### 11.2 Election: exactly one poster
-
-Everyone computes the same answer from the same HELLO list, so there's no negotiation round-trip. Among addon users whose mode is `"group"`:
-
-1. The **group leader**, if they have the addon.
-2. Otherwise a player whose role is **TANK**, lowest GUID first.
-3. Otherwise the **lowest GUID** (string compare).
-
-Re-elect on every roster change or HELLO. The poster's own thresholds and templates decide the chat line. Everyone else's settings still decide their own local frames, on-screen and sound.
-
-### 11.3 MANA reports (healers with the addon)
-
-- When an alert window closes, a healer with the addon sends `1|MANA|<pct>|<drinking>` once. Out of combat only, so it's allowed.
-- The poster waits up to **1 s** after its own window closes for these, then uses them instead of its remote reads. A player's own mana and auras are never secret to themselves, so this fixes any secret-value gaps.
-
-### 11.4 Fallback and safety net: chat-listen dedupe
-
-Used when comms are blocked or unreliable on Forever, **and** always as a second safety net:
-
-- Before posting, a client waits a short **stagger**: 0 s if it's the elected poster, otherwise `0.5 + (hash(myGUID) % 10) * 0.25` s (up to about 3 s).
-- During the window and the stagger, it listens to `CHAT_MSG_PARTY`, `CHAT_MSG_PARTY_LEADER`, `CHAT_MSG_RAID`, `CHAT_MSG_RAID_LEADER`, `CHAT_MSG_INSTANCE_CHAT` and `CHAT_MSG_INSTANCE_CHAT_LEADER`. If another group member (sender GUID ≠ mine) posted a line starting with `[SoThirsty]`, **stay quiet** for this window.
-- If comms are confirmed unavailable, print a one-time local notice: "SoThirsty: addon messages are blocked here. Using chat-listen to avoid double posts."
+- **The five indicators:** only on the screen of a player who has the addon; each viewer's own settings decide their look.
+- **The chat line:** everyone in the group, when someone with the addon clicks the drink button.
+- A tank with party frames hidden still gets the flask, banner and screen glow.
+- No addon messages, nothing agreed between clients.
 
 ---
 
-## 12. Settings, slash commands, debug
+## 12. Settings, options, commands
 
-### 12.1 `SoThirstyDB` defaults
+### 12.1 `SoThirstyDB` (version 4)
 
 ```lua
-local DB_DEFAULTS = {
-  version = 1,
-  settings = {
-    enabled = true,
-    -- color: {r, g, b, a} from the color picker; out: the output grid row (9.1).
-    levels = {
-      { enabled = true, pct = 50, msg = nil, color = { 1, 0.82, 0, 1 },
-        out = { frame = true, screen = true, party = false, raid = false, instance = false, sound = false } },
-      { enabled = true, pct = 30, msg = nil, color = { 1, 0.5, 0, 1 },
-        out = { frame = true, screen = true, party = true,  raid = false, instance = true,  sound = false } },
-      { enabled = true, pct = 10, msg = nil, color = { 1, 0.125, 0.125, 1 },
-        out = { frame = true, screen = true, party = true,  raid = true,  instance = true,  sound = true  } },
-    },
-    ready = { enabled = true, pct = 90, msg = nil, color = { 0.25, 1, 0.25, 1 },
-      out = { frame = true, screen = true, party = false, raid = false, instance = false, sound = false } },
-    mergedMsg = nil,                -- nil = locale default "Healers thirsty: {list}"
-    rearmMargin = 5,
-    settleSeconds = 10,             -- 5 | 8 | 10 | 15 | 20
-    drinkRise = 10,                 -- pct points across the window that count as "drinking"
-    quietAfterWipe = true,
-    combatScope = "group",          -- "group" | "me"
-    announceMode = "group",         -- "group" | "self" | "local"
-    announceMe = true,              -- healer opt-out, sent in HELLO
-    chat = { prefix = true, marker = nil },   -- channels are per level (levels[n].out)
-    onScreen = {
-      mode = "all",                 -- "all" | "tank" | "off"  (always our banner; never raid warnings)
-      self = false,
-      scale = 100, hold = 4, sameSize = false, point = nil,
-      bgColor = { 0.05, 0.08, 0.12, 0.85 }, borderColor = { 0.31, 0.76, 0.97, 1 },
-    },
-    frames = { enabled = true, badge = true, showDrinking = true },
-    look = {
-      palette = "classic",          -- "classic" | "water" | "colorblind" | "custom" (any hand-picked color)
-      badgeColor = nil,             -- nil = same as the level
-      drinkColor = { 0.31, 0.76, 0.97, 1 },
-      prefixColor = { 0.31, 0.76, 0.97, 1 },
-      style = "glow",               -- "glow" | "border" | "corners" | "tint" | "bar"
-      thickness = 2, alpha = 80,
-      pulse = "L3", pulseSpeed = "normal",
-      badgeContent = "pct", badgePos = "TOPRIGHT", badgeSize = "medium",
-      icon = "drop",
-      ghost = 25,                   -- faint greyscale icon behind window content, 0-100 % (9.7)
-    },
-    highlightInCombat = "hide",     -- "hide" | "freeze"
-    sound = {
-      enabled = true, channel = "Master", tankAll = true,
-      levels = { "none", "none", "alert" }, ready = "none",
-    },
-    zones = { dungeon = true, raid = true, world = false },
-    roleHint = true,
-    snoozeUntil = nil,              -- time() or "instance"
+settings = {
+  enabled = true,
+  levels = {
+    { pct = 50, color = { 1, 0.82, 0, 1 } },
+    { pct = 30, color = { 1, 0.5, 0, 1 } },
+    { pct = 10, color = { 1, 0.125, 0.125, 1 } },
   },
+  palette = "classic",            -- "classic" | "water" | "colorblind" | "custom"
+  bar = { enabled = true, alpha = 100 },
+  pips = { enabled = true, size = "medium", corner = "TOPRIGHT" },
+  flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false,
+            layout = "row", together = true },                    -- + point / points once dragged
+  banner = { enabled = true, delay = 5, hold = 5, scale = 100 },  -- + point once dragged
+  vignette = { enabled = false, strength = 35, width = "medium", custom = false, color = { 0.31, 0.76, 0.97, 1 } },
+  button = { show = "healer", party = true, raid = true, instance = true, prefix = true },
+  zones = { dungeon = true, raid = true, world = true },
+  combatScope = "group",          -- "group" | "me"
+  roleHint = true,
+  minimap = { hide = false, angle = 215 },
+  ghost = 35,
+  debugEvents = false,
 }
 ```
 
+Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the levels and colors, the palette, the drink button, zones, combat scope, role hint and the minimap button, and drops everything else.
+
 ### 12.2 Options window (`UI/Options.lua`)
 
-Build it the same way as Bounty Line's options: the addon's own window via `ns.CreateWindow`, plus a small canvas entry under Esc > Options > AddOns that opens it. Split it into **tabs** (or stacked sections if Bounty Line's window helper doesn't do tabs):
+**Big and sparse, so the art shows:** 900 × 660. A short list of tabs down the left; one short column of controls per tab; **Play** and **Preview on screen** in the bottom right (Section 9.2); the rest of the panel left open.
 
-- **Warnings:** three level rows (enable check, threshold **slider** 5–95 step 5 with a numeric edit box, color swatch → color picker), the Ready row, the output grid (9.1: Frame / On-screen / **Party / Raid / Instance** / Sound checks per level) with preset buttons, and alert-window delay (cycle 5/8/10/15/20 s), drink-rise threshold, quiet after wipe.
-- **Look:** palette (cycle), color swatches for every color in 9.2 (each opens the color picker, each with a reset arrow), highlight style, thickness, opacity, pulse, badge content/position/size, icon, drinking indicator, highlight in combat (cycle hide/freeze), window ghost strength (slider 0–100 %). A live **preview frame** on the tab shows the current look.
-- **On-screen & Sound:** on-screen mode (all/tank/off), show on healer's own screen, Unlock banner, scale, hold, same size, banner background/border swatches; sounds on/off, channel, per-level sound pickers with ▶ preview, tank hears all.
-- **Chat:** announce mode (group/self/local), announce me (healer opt-out), prefix, raid marker, "Edit messages..." (five edit boxes, token help, Reset), and the preview line.
-- **General:** enabled, zones (three checks), combat check (group/me), role hint, snooze status + button.
-- **Bottom buttons:** **Test** (runs `/sot test`), **Debug info**, **Reset all**, **Close**.
+| Tab | Options |
+|---|---|
+| **General** (first) | On/off; the three zones; counts as "in combat"; role hint; minimap button; window art strength; Reset all; Debug info |
+| **Levels** | The three levels (threshold + color each); color preset |
+| **Mana bar** | Show this; opacity |
+| **Pips** | Show this; size; corner |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; simple view; row or column; stack or one by one; preview and place on screen |
+| **Banner** | Show this; how long after the fight; how long it stays; size; name shown (first and surname / first only); preview and place on screen |
+| **Screen glow** | Show this; strength; width; use my own color; the color |
+| **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; name shown; the two lines; make macros |
+
+- **Save / Undo changes.** A change shows at once, on the preview and for real, so it can be judged. It only sticks on **Save**. **Undo changes** returns to the last save. Closing with unsaved changes undoes them and says so in chat. Where things were dragged to always sticks. Slash commands apply at once.
+- Also reachable from Esc > Options > AddOns.
 
 ### 12.3 Slash commands (`/thirsty`, `/sot`)
 
@@ -579,85 +320,52 @@ Build it the same way as Bounty Line's options: the addon's own window via `ns.C
 |---|---|
 | `/sot` | Opens options |
 | `/sot on` / `off` | Master toggle |
-| `/sot levels 50 30 10` | Quick-set thresholds (validated) |
-| `/sot preset quiet\|normal\|chatty\|local` | Sets the output matrix |
-| `/sot snooze [30\|instance\|off]` | Silences chat (frames and on-screen stay) |
-| `/sot test` | Simulates L1 → L2 → L3 → drinking → Ready on **your own** frame, screen and sound only, 2 s apart. **Never** posts to chat. |
-| `/sot move` / `lock` | Unlock / lock the banner |
-| `/sot status` | Lists tracked healers with their mana %, level, drinking state, plus the elected poster |
-| `/sot sync` | Re-sends HELLO |
-| `/sot debug` | Client build, Interface, `WOW_PROJECT_ID`, group type, chat channel picked, combat flags, and for each unit: role, mana raw/max, secret flags |
-| `/sot debug frames` | Which frame was found for each group unit (or "none") |
-| `/sot debug drink` | For each healer: auras seen (name, spell ID, secret flags), drink match, and mana pct now vs. 10 s ago |
-| `/sot debug comms` | HELLO table, election result, last MANA reports, whether sends succeed |
-| `/sot debug sounds` / `icons` | Plays / shows each candidate in `Theme.lua` and reports which exist |
-| `/sot debug chat` | Sends one test line to the group channel (asks for confirmation in chat first) to verify `SendChatMessage` works on Forever |
+| `/sot levels 50 30 10` | Sets the three levels |
+| `/sot bar` / `pips` / `flask` / `banner` / `glow` | Switches one indicator on or off |
+| `/sot drink` / `ready` | Same as clicking the button |
+| `/sot macro` | Makes the two macros |
+| `/sot move` / `lock` | Shows the flask and banner for placing |
+| `/sot test` | Plays the preview |
+| `/sot ghost 35` | Window art strength |
+| `/sot minimap` | Shows / hides the minimap button |
+| `/sot status` | Tracked healers and their known states |
+| `/sot debug` | Client, group, zone, combat, indicators on, per-unit role and state |
+| `/sot debug looks` | Checks the indicators on every group member (Q25–Q27) |
+| `/sot debug frames` / `drink` / `icons` / `events` | Unit frames found; drink buffs; game art; live event print |
 | `/sot help` | Command list |
+
+**Minimap button** (`UI/Minimap.lua`, no library): left-click opens Options, right-click opens a menu of every command, drag moves it. The addon compartment entry does the same.
 
 ---
 
 ## 13. Lightweight budget & code rules
 
-- **CPU:**
-  - Listen to `UNIT_POWER_UPDATE` (not `_FREQUENT`), filtered to `powerType == "MANA"` and tracked healer units only.
-  - Coalesce updates per healer to at most one evaluation every **0.5 s**.
-  - Scan auras **only when an alert window closes** (and in `/sot debug drink`), never on `UNIT_AURA` spam.
-  - Listen to group chat events only while an alert window or stagger is open.
-  - Unregister power events when solo, in a disabled zone, or when no healer is assigned.
-- **Memory:** no per-frame tables in hot paths. Reuse state tables.
-- **Size target:** about 1,500 lines of Lua total, excluding locales, `Theme.lua` data and tests.
-- **No** `OnUpdate` scripts. Timers use `C_Timer.After` / `NewTimer`; animations use `AnimationGroup`.
-- All player-facing text goes in `Locales/enUS.lua`. Locale lines are allowed to be long (`max_line_length = 200` for Locales, as in bounty-line).
-- `.luacheckrc`: copy bounty-line's shape. Set `globals` to `SoThirstyDB`, `SLASH_SOTHIRSTY1/2`, `SlashCmdList` and the three compartment functions. List every WoW API used in `read_globals`, and keep that list accurate.
-- Keep the addon free, unobfuscated and ad-free (Blizzard UI Add-On Development Policy).
+- `UNIT_POWER_UPDATE` (mana only) and `UNIT_AURA`, for tracked healers only, coalesced to one refresh per healer per **0.5 s**. Unregistered when solo, in a disabled zone, or with no healer.
+- Curves are rebuilt only when a level or color changes.
+- No `OnUpdate`, with one exception: the minimap button while it is being dragged. Timers use `C_Timer`.
+- No motion in v3: nothing pulses or animates. If motion returns, it must not use an Alpha/Scale `AnimationGroup` over mana-driven textures (Section 2).
+- **Secrets:** never compare, branch on or do math with one. Test only the `ok` flag `Curves` returns. Pass secrets only to `SetAlpha`, `SetVertexColor`, `SetTextColor`, `SetValue`, and (the banner's percent) `SetFormattedText`.
+- Every unproven setter is called through `pcall`, with a plain fallback, so a refusal degrades instead of erroring.
+- All player-facing text in `Locales/enUS.lua`. `.luacheckrc` lists every WoW API used.
+- Free, unobfuscated, ad-free (Blizzard UI Add-On Development Policy).
 
 ---
 
-## 14. `CLAUDE.md` for the new repo (create in Phase 1)
+## 14. `CLAUDE.md`
 
-```markdown
-# SoThirsty — Project Instructions
-
-The full design lives in `docs/SoThirsty-Design-Spec.md`. Read it before any work. It is the source of truth; if code and spec disagree, ask before changing either.
-
-## What this is
-- `addon/SoThirsty/`: WoW: Forever addon (Lua). Interface 16001, `SoThirsty_Forever.toc` + `SoThirsty.toc`.
-- In-game only. No Discord, no Worker, no network, no relay.
-- Only one player in the group needs the addon; it watches every healer.
-
-## Hard rules
-- The quiet contract (spec 1.1) beats every other setting: one alert window per fight (10 s after combat), skip healers who are drinking, escalation only, one merged chat line per window, one elected poster per group, 3 lines / 5 min cap.
-- Forever addon API = modern Midnight client with restrictions: secret values may hide unit data (power, auras, combat flags) — check with ns.IsSecret and degrade gracefully; no COMBAT_LOG_EVENT_UNFILTERED; addon comms restricted in encounters (queue + flush, out of combat only); no realms — key by GUID.
-- Warnings fire OUT OF COMBAT ONLY. Never send chat in combat, in battlegrounds or arenas, or to SAY/YELL/RAID_WARNING.
-- Healers = UnitGroupRolesAssigned(unit) == "HEALER". Nothing else.
-- Never taint Blizzard frames: our own non-secure overlays only, created/anchored out of combat.
-- Keep it lightweight: no libraries, no OnUpdate, UNIT_POWER_UPDATE only, auras scanned only when a window closes.
-- Keep the addon free, unobfuscated and ad-free (Blizzard UI Add-On Development Policy).
-
-## How to work
-- Build in the phases in spec Section 15. Finish and test one phase before starting the next.
-- Small commits with short, clean messages. No `Co-Authored-By` or other AI attribution lines in commits or PR descriptions.
-- Work on a branch, open a PR, wait for CI, rebase-merge.
-- Track progress in CHANGELOG.md (one entry per phase). Tag each finished phase `v0.<phase>.0`; v1.0.0 at release.
-- When a Forever API behavior is uncertain, add it to spec Section 16 and add a `/sot debug` subcommand to test it in game. Don't guess.
-- `Levels.lua` stays pure (no WoW API) and every rule in spec 6.2 has a test in `addon/tests/logic.lua`. Write the tests first.
-```
+The repo's `CLAUDE.md` carries the hard rules from this spec and the working rules (commits, PRs, tests). Keep it in step with this file.
 
 ---
 
-## 15. Build phases
+## 15. Build status
 
-Each phase ends with: luacheck clean, tests passing on lua5.1 and luajit, a CHANGELOG entry, and a tag.
-
-| Phase | Scope | Acceptance (Rich checks in game) |
+| Step | Scope | State |
 |---|---|---|
-| **1. Skeleton** | Repo, CLAUDE.md, both TOCs, Core (DB defaults, slash table, startup), Locales, Debug (`/sot debug`), Window helper, luacheck, CI, packager workflow, compartment entry | Loads on Forever with no Lua errors. `/sot debug` prints the client info and each group member's role and mana, showing `<secret>` where it applies. |
-| **2. Logic** | `Levels.lua` + full tests (6.3), `Roster.lua` (role scan, mana reads, GUID map), `Drink.lua` + `/sot debug drink`, `/sot status` | `/sot status` in a party lists the healer with the correct % and drinking state. Setting or clearing the role via Set Role updates it. `/sot debug drink` shows a drink aura while the healer drinks. |
-| **3. Gate + announce** | `Combat.lua` (group combat, alert window, wipe flag), `Announce.lua` (output matrix, merged line, on-screen, sounds, caps, snooze, zone rules), `/sot test`, `/sot debug chat` | In a dungeon, **the healer doesn't have the addon** and you do: the healer drops below 30 during a pull, and **one** chat line appears about 10 s after combat ends. If the healer is drinking by then, nothing is posted. Chain pulls post nothing until the last one ends. Nothing in BGs. |
-| **4. Group mode** | `Comms.lua` (HELLO, election, MANA reports, chat-listen fallback), `/sot sync`, `/sot debug comms` | Two or three addon users in one group: each warning appears in chat **exactly once**. Kill comms (or test where they're blocked): chat-listen still prevents doubles. |
-| **5. Frames + look** | `Frames.lua` highlights in all five styles, badge, pulse, drinking indicator, `Theme.lua` palettes; `/sot debug frames`, `/sot debug icons` | The highlight tracks the level out of combat, hides in combat, every style and palette renders, and there are no taint errors (`/console taintLog 1` is clean). |
-| **6. Options + sound + banner** | Full tabbed options window, sliders + validation, output matrix + presets, color picker, message editor + preview line, sound pickers + preview + custom files, banner + move/lock, Esc-menu entry, `/sot debug sounds` | Changing thresholds to 60/40/20 works immediately. An invalid order is rejected. Each preset changes what reaches chat. Custom messages appear in chat. The banner moves and remembers its spot. |
-| **7. Release** | README (players), `docs/curseforge-description.md`, logo, drop icon, CurseForge project ID in the TOCs, `v1.0.0` tag | Packager builds a zip; installing it from CurseForge works on Forever. |
+| 1. Skeleton | Repo, TOCs, Core, Locales, Debug, Window helper, CI | Done, checked in game |
+| 2. Roster + probes | Healer tracking, drink buffs, the probes behind Q1–Q24 | Done, checked in game |
+| 3. Drink button | Button, lines, caps, macros, key bindings | Built; button and caps checked in game; macros and bindings not yet |
+| 4. Five indicators | Mana bar color, pips, flask, banner, screen glow; slim settings and options | Built; **not yet checked in game** (`/sot debug looks`, Q25–Q27) |
+| 5. Release | README, CurseForge description and project ID, `v1.0.0` tag | To do |
 
 ---
 
@@ -685,6 +393,24 @@ Answer each with a `/sot debug` subcommand in game. Record the answers here.
 
 18. Can a `C_CurveUtil` curve turn the secret mana percent into an alpha or a color that our own textures accept (`UnitPowerPercent(unit, Mana, false, curve)`, `SetAlpha`, `SetVertexColor`)? Is the percent on a 0–1 or 0–100 scale? Test with `/sot debug curve`. This is the only way left to show mana levels (see Q17 answer).
 19. What scale does `UnitPowerPercent` feed a curve (0–1 or 0–100)? Does a curve-driven color/fade update live on `UNIT_POWER_UPDATE`? Test with `/sot debug swatch` while spending mana.
+
+Open for design v2 (all tested by `/sot debug party`):
+
+20. Do curves work on a **party member's** mana, not just the player's? Does `UNIT_POWER_UPDATE` fire for them?
+21. Does `SetAlphaFromBoolean(UnitInRange(unit), 1, 0.4)` take the secret range flag? Which event refreshes it?
+22. Does a looping alpha `AnimationGroup` on a parent frame combine with a secret `SetAlpha` on a child texture (the pulse layer)?
+23. Does `StatusBar:SetValue(UnitPowerPercent(unit, Mana))` fill correctly on a 0–1 range (the thirst meter)?
+24. Does `StatusBar:SetStatusBarColor` or its texture's `SetVertexColor` take secret color parts?
+
+Open for design v3 (tested by `/sot debug looks`):
+
+25. Is the unit frame's own power bar reachable (`powerBar` / `PowerBar` / `manabar` / `ManaBar`), showing, and the size we expect? The mana bar color sits on it.
+26. Does a **vertical** `StatusBar` using an icon as its fill texture take the secret mana fraction, and is the icon cropped (not squashed) as it drains? The flask depends on it.
+27. Do `FontString:SetTextColor` and `FontString:SetAlpha` take secret values? The banner and the flask names depend on it.
+28. Does `UnitPowerPercent(unit, Mana, false, CurveConstants.ScaleTo100)` return a (secret) 0–100 number, and does `FontString:SetFormattedText("%s's mana is at %.0f%%", name, secret)` print it? The banner's wording depends on it. `/sot debug looks` checks both. If not, the banner line is just the name.
+29. **Surnames: yes** (verified for Bounty Line, 2026-11-21). `UnitName(unit)` returns the first name and the surname ("Slac", "Jaw"); the surname sits where retail has the realm. The banner shows "First Surname"; the flask keeps the first name, to fit.
+
+Questions 3, 4, 6 and 16 still matter. Questions 9, 10, 12, 13 and 15 belonged to the v1 design (addon messages, sounds, mana-rise, chat-listen), and 21 to v2's range fade; they no longer apply.
 
 ### Answers so far
 
@@ -716,6 +442,18 @@ From `/sot debug swatch` (player, spending mana from 100% to 4%):
 
 - **Q19: the curve input is 0–1** (0.5 = half mana). The color square went green (100%), amber (42%), orange-red (14%), red (4%); the fade square, stepped at 0.9, appeared below 90%. Both update live on `UNIT_POWER_UPDATE` for the player. Party members still to confirm in a group.
 
+From `/sot debug party`, `/sot debug frames` and `/sot debug drink` (design v2 build, party of 3, open world, out of combat, Blizzard raid-style party frames):
+
+- **Q20: yes.** The color and strength curves work on party members' mana, and `SetVertexColor` / `SetAlpha` accept the results, for the player and both party members.
+- **Q21: yes.** `UnitInRange` is secret, and both `Texture:SetAlphaFromBoolean` and `Frame:SetAlphaFromBoolean` accept it. The refresh event is still to confirm.
+- **Q23: yes.** `UnitPowerPercent(unit, Mana, false, CurveConstants.ZeroToOne)` works and `StatusBar:SetValue` accepts it; the thirst meter fills correctly.
+- **Q24: yes.** `StatusBar:SetStatusBarColor` and its texture's `SetVertexColor` both take secret color parts.
+- **Q8:** with raid-style party frames on, the frames are `CompactPartyFrameMember1..N`, the player included. Classic party frames still to check.
+- **Q11:** aura names and spell IDs are readable out of combat, for the player and for party members (their scans returned a clean `false`, not hidden). The drink buff is **"Drink", spell 1135** (Moonberry Juice).
+- **Q6:** `SendChatMessage` to PARTY works from a button click, out of combat, in the open world. Instances still to check.
+- **Q22: no.** An Alpha `AnimationGroup` on a parent frame overrides its child textures' alpha (the nudge lit the glow at full mana, and the pulse edge showed above level 3). Motion now uses a shared timer and plain `SetAlpha` on our own frames (8.1).
+- Found in the same test: the glow art is drawn to grow inward, so an outward glow made its corner pieces cross. The glow now sits just inside the frame edge.
+
 ---
 
 ## 17. Out of scope (v1) and ideas parking lot
@@ -730,8 +468,8 @@ From `/sot debug swatch` (player, spending mana from 100% to 4%):
 
 **Ideas for v1.1+ (not promises):**
 
-- **Thirst meter:** a tiny movable panel listing each healer's mana bar in level colors, shown only out of combat.
-- **`{eta}` token:** "~12 s to 90%", estimated from the drink-rise rate.
+- **Chat-line reaction:** when another player's `[Thirsty]` drink line appears in group chat, addon users get a small local banner or sound. This is the one automatic alert that's still possible, because it reacts to a person's click, not to mana.
+- A percent badge on the frame, if the game allows formatting a secret number into our own text.
 - Per-character profiles, and settings import/export strings.
 - Third-party frame support (ElvUI, Cell, Grid2, VuhDo).
-- Optional "tank whisper" mode for groups that hate group chat.
+- Optional "tank whisper" mode for the drink button.
