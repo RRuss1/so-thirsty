@@ -115,6 +115,7 @@ ns.L = {
   NOTE_PIPS = "Three dots on the healer's frame: one below level 1, two below level 2, three below level 3. Needs party frames showing.",
   OPT_FLASK_WHEN_LOW = "Hide it while their mana is fine",
   OPT_FLASK_NAMES = "Show the healer's name under it",
+  OPT_FLASK_SIMPLE = "Simple view: plain bars, no icons or names",
   OPT_FLASK_LAYOUT = "Several healers line up",
   FLASK_LAYOUT = { row = "In a row", column = "In a column" },
   OPT_FLASK_TOGETHER = "When placing",

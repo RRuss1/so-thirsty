@@ -313,6 +313,7 @@ local function tabList()
       step(L.OPT_OPACITY, flaskCfg, "alpha", 20, 100, 10, "%"),
       step(L.OPT_SIZE, flaskCfg, "scale", 60, 200, 10, "%"),
       check(L.OPT_FLASK_NAMES, flaskCfg, "names"),
+      check(L.OPT_FLASK_SIMPLE, flaskCfg, "simple"),
       cycle(L.OPT_FLASK_LAYOUT, flaskCfg, "layout", { "row", "column" }, L.FLASK_LAYOUT),
       cycle(L.OPT_FLASK_TOGETHER, flaskCfg, "together", { true, false }, L.FLASK_TOGETHER),
       placeRow,

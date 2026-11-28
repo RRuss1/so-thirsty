@@ -17,7 +17,7 @@ local DB_DEFAULTS = {
     -- The five indicators (spec 8).
     bar = { enabled = true, alpha = 100 },
     pips = { enabled = true, size = "medium", corner = "TOPRIGHT" },
-    flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false,
+    flask = { enabled = true, scale = 100, names = true, alpha = 100, whenLow = false, simple = false,
       layout = "row",               -- several healers: "row" | "column"
       together = true },            -- placed as one stack (true) or one flask at a time
     banner = { enabled = true, delay = 5, hold = 5, scale = 100, surname = true },

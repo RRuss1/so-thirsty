@@ -187,7 +187,8 @@ Each has `enabled` and lives in its own settings group. All follow `Levels.Holde
 - The healer's name underneath, class-colored.
 - With `flask.whenLow` on, it goes back to hiding while mana is fine: every texture's alpha comes from the fade curve and the name's from `low` (Q27; the name is dropped if the client refuses).
 - **Several healers:** `flask.layout` lines them up in a **row** (default) or a **column**. `flask.together` (default on) places them as one stack; off, each flask is dragged to its own spot, saved per slot (first healer, second healer...) in `flask.points`. While placing, three stand-ins show so the layout can be seen.
-- Options: only when low, opacity (20–100%), size, show names, row or column, stack or one by one. Placed in the on-screen preview (Section 9.2) or with `/sot move`.
+- **Simple view** (`flask.simple`, off by default): each flask becomes a plain bar (14 × 48), side by side with their bottoms level, filled by the same fraction and colored like the edge (class color while fine, level colors when low). No icon and no name. In a raid the row of bars reads as the healers' mana at a glance; there is no combined number (mana is secret and can't be added up).
+- Options: only when low, opacity (20–100%), size, show names, simple view, row or column, stack or one by one. Placed in the on-screen preview (Section 9.2) or with `/sot move`.
 
 ### 8.4 After-fight banner (`UI/Banner.lua`, `settings.banner`, on by default)
 
@@ -305,7 +306,7 @@ Older databases (v1–v3) go through `Levels.Migrate`: it keeps on/off, the leve
 | **Levels** | The three levels (threshold + color each); color preset |
 | **Mana bar** | Show this; opacity |
 | **Pips** | Show this; size; corner |
-| **Flask** | Show this; hide while mana is fine; opacity; size; show names; row or column; stack or one by one; preview and place on screen |
+| **Flask** | Show this; hide while mana is fine; opacity; size; show names; simple view; row or column; stack or one by one; preview and place on screen |
 | **Banner** | Show this; how long after the fight; how long it stays; size; name shown (first and surname / first only); preview and place on screen |
 | **Screen glow** | Show this; strength; width; use my own color; the color |
 | **Drink button** | Show the button; party / raid / instance; `[Thirsty]` tag; name shown; the two lines; make macros |

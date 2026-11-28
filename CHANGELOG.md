@@ -6,7 +6,7 @@ The first group test showed the frame glow hiding under aggro borders, and the o
 
 - **Mana bar color:** the healer's own mana bar on their frame turns yellow, orange, then red below level 1.
 - **Pips:** dots on the healer's frame, one per level reached.
-- **Flask:** a flask per healer anywhere on screen, always showing like a mana bar (or only when low, as an option). It drains with their mana; its edge goes from class color to the level colors. Has an opacity setting. Several healers line up in a row or a column, placed as one stack or one flask at a time.
+- **Flask:** a flask per healer anywhere on screen, always showing like a mana bar (or only when low, as an option). It drains with their mana; its edge goes from class color to the level colors. Has an opacity setting. Several healers line up in a row or a column, placed as one stack or one flask at a time. **Simple view** swaps the icons for plain bars side by side, for a quick read of every healer in a raid.
 - **After-fight banner:** 5 seconds after a fight, "Name's mana is at x%" for a low healer, in their level color (the game prints the number; not yet proven on this client, spec 16 Q28). Skipped on chain pulls, after a wipe and for a drinking healer.
 - **Screen-edge glow:** a soft haze on the screen edges, in the level colors or one color of your own. Off by default.
 - The banner and the drink button's chat line show the healer's first name and surname, or the first name only (a setting on each tab).

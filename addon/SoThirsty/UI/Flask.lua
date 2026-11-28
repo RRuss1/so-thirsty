@@ -12,7 +12,9 @@ local Flask = {}
 ns.Flask = Flask
 
 local SIZE, GAP, EDGE, NAME_H = 40, 10, 2, 14
-local SAMPLES = 3        -- stand-in flasks shown while placing, so the layout can be seen
+local BAR_W, BAR_H, BAR_GAP = 14, 48, 8 -- simple view: plain bars, side by side
+local WHITE = "Interface\\Buttons\\WHITE8x8"
+local SAMPLES = 3       -- stand-in flasks shown while placing, so the layout can be seen
 local stack              -- the frame the flasks sit in (and move with, when placed as one)
 local items = {}
 local namesWork = true   -- set false if this client won't fade text from a hidden value
@@ -94,12 +96,45 @@ local function buildItem(i)
   return item
 end
 
+-- Width, height, gap and name height of one flask: the icon, or (simple view) a plain bar.
+local function dims(flask)
+  if flask.simple then return BAR_W, BAR_H, BAR_GAP, 0 end
+  return SIZE, SIZE, GAP, NAME_H
+end
+
+-- Switches one flask between the icon and the simple bar.
+local function shape(item, flask)
+  local simple = flask.simple and true or false
+  if item.simple == simple then return end
+  item.simple = simple
+  local w, h, _, nameH = dims(flask)
+  item:SetSize(w, h + nameH)
+  item.back:SetSize(w, h)
+  if simple then
+    item.back:SetTexture(WHITE)
+    item.back:SetTexCoord(0, 1, 0, 1)
+    item.back:SetDesaturated(false)
+    item.back:SetVertexColor(0.05, 0.05, 0.08, 1)
+    item.liquid:SetStatusBarTexture(WHITE)
+  else
+    item.back:SetTexture(Theme.ICONS.flask)
+    item.back:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    item.back:SetDesaturated(true)
+    item.back:SetVertexColor(0.3, 0.3, 0.3, 1)
+    item.liquid:SetStatusBarTexture(Theme.ICONS.flask)
+  end
+end
+
 -- Paints one flask. Values may be secret (Curves.All) or plain (Levels.Plain).
 local function paint(item, fraction, r, g, b, alpha, low)
   item.back:SetAlpha(alpha)
   item.liquid:SetValue(fraction)
   local fill = item.liquid:GetStatusBarTexture()
-  if fill then fill:SetAlpha(alpha) end
+  if fill then
+    -- The simple bar has no art of its own: the fill takes the edge's color.
+    if item.simple then fill:SetVertexColor(r, g, b) else fill:SetVertexColor(1, 1, 1) end
+    fill:SetAlpha(alpha)
+  end
   for _, t in ipairs(item.edge) do
     t:SetVertexColor(r, g, b)
     t:SetAlpha(alpha)
@@ -131,17 +166,20 @@ local function build()
 end
 
 -- Where flask i sits inside the stack: across for a row, down for a column.
-local function offset(i, column)
-  if column then return 0, -(i - 1) * (SIZE + NAME_H + GAP) end
-  return (i - 1) * (SIZE + GAP), 0
+local function offset(i, column, flask)
+  local w, h, gap, nameH = dims(flask)
+  if column then return 0, -(i - 1) * (h + nameH + gap) end
+  return (i - 1) * (w + gap), 0
 end
 
 -- Puts flask i where it belongs: in the stack, or (placed one by one) at its own spot.
 local function position(item, i, flask, placing)
   local column = flask.layout == "column"
-  local x, y = offset(i, column)
+  shape(item, flask)
+  local x, y = offset(i, column, flask)
   local own = not flask.together and flask.points and flask.points[i]
   local key = own or (flask.together and "stack" or "loose") .. (column and "column" or "row")
+    .. (flask.simple and "simple" or "")
   if item.placed ~= key then
     item.placed = key
     item:ClearAllPoints()
@@ -204,7 +242,7 @@ function Flask.Update()
       item:SetAlpha((showDemo.drinking and Levels.DRINK_DIM or 1) * opacity)
       item.drop:SetShown(showDemo.drinking == true)
       item.name:SetText(L.PREVIEW_NAME)
-      item.name:SetShown(flask.names and namesWork)
+      item.name:SetShown(flask.names and namesWork and not flask.simple)
       local fraction, r, g, b, a, low = Levels.Plain(showDemo.pct, s)
       if always then a, low = 1, 1 end
       paint(item, fraction, r, g, b, a, low)
@@ -222,7 +260,7 @@ function Flask.Update()
       item:SetAlpha(alpha * opacity)
       item.drop:SetShown(drinking)
       item.name:SetText(ns.Roster.DisplayName(h))
-      item.name:SetShown(flask.names and namesWork)
+      item.name:SetShown(flask.names and namesWork and not flask.simple)
       if alpha > 0 then
         local ok, fraction, r, g, b, a, low = Curves.All(h.unit)
         if ok then
@@ -245,9 +283,10 @@ function Flask.Update()
 
   -- The stack is as big as the flasks in it, so its grab plate covers them all.
   local n = math.max(1, count)
+  local w, h, gap, nameH = dims(flask)
   if flask.layout == "column" then
-    stack:SetSize(SIZE, n * (SIZE + NAME_H + GAP) - GAP)
+    stack:SetSize(w, n * (h + nameH + gap) - gap)
   else
-    stack:SetSize(n * (SIZE + GAP) - GAP, SIZE + NAME_H)
+    stack:SetSize(n * (w + gap) - gap, h + nameH)
   end
 end
